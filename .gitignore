@@ -138,3 +138,9 @@ iOSInjectionProject/
 # Firebase
 # Firebase Cloud Functions
 **/node_modules
+
+# Python
+spoon-env/
+__pycache__/
+*.py[cod]
+.env
