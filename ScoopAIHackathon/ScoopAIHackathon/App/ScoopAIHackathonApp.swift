@@ -24,16 +24,12 @@ struct ScoopAIHackathonApp: App {
             case .inputEvent:
                 InputEventView(onComplete: {
                     withAnimation {
-                        appFlow = .calendar
+                        appFlow = .dashboard
                     }
                 })
 
-            case .calendar:
-                CalendarMainView(onNewEvent: {
-                    withAnimation {
-                        appFlow = .inputEvent
-                    }
-                })
+            case .dashboard:
+                DashboardWrapperView()
             }
         }
     }
@@ -44,31 +40,15 @@ struct ScoopAIHackathonApp: App {
 enum AppFlow {
     case onboarding
     case inputEvent
-    case calendar
+    case dashboard
 }
 
-// MARK: - Calendar Main View (Wrapper)
+// MARK: - Dashboard Wrapper View
 
-struct CalendarMainView: View {
-    var onNewEvent: (() -> Void)?
-
+struct DashboardWrapperView: View {
     var body: some View {
         NavigationStack {
-            EventCalendarView()
-                .navigationTitle("일정 캘린더")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            // 데이터 초기화 후 새 행사 입력
-                            EventDataStore.shared.reset()
-                            onNewEvent?()
-                        } label: {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.title3)
-                        }
-                    }
-                }
+            DashboardMainView()
         }
     }
 }
