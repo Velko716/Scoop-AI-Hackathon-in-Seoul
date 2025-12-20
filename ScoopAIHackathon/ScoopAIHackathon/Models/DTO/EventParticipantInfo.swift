@@ -16,7 +16,7 @@ struct EventParticipantInfo: Codable {
     // MARK: - Initializer
     init(
         targetAudience: String = "",
-        participantCount: String = "0명"
+        participantCount: String = ""
     ) {
         self.targetAudience = targetAudience
         self.participantCount = participantCount
@@ -24,6 +24,6 @@ struct EventParticipantInfo: Codable {
 
     // MARK: - Validation
     var isValid: Bool {
-        !targetAudience.isEmpty && participantCount.isEmpty
+        !targetAudience.isEmpty && !participantCount.isEmpty
     }
 }
