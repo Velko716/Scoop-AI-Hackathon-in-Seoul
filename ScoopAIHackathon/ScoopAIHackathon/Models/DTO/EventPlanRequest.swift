@@ -7,33 +7,41 @@
 
 import Foundation
 
-// MARK: - Event Plan Request
+// MARK: - Event Plan Request (최종 전송 모델)
+/// 페이지별로 수집된 데이터를 조합하여 최종 API 요청에 사용
 struct EventPlanRequest: Codable {
-    let eventName: String           // 행사명
-    let startDate: Date             // 행사 시작일
-    let endDate: Date               // 행사 종료일
-    let targetAudience: String      // 행사대상
-    let eventLocation: String       // 행사장소
-    let staffCount: Int             // 스태프 인원
-    let participantCount: Int       // 참가 인원
-    let budget: Int?                // 소요예산 (선택)
-    let requiredEquipment: String?  // 필요비품 (선택)
-    let eventOverview: String       // 행사개요
-    let eventContent: String        // 행사내용
+    let basicInfo: EventBasicInfo           // 페이지 2: 기본 정보
+    let participantInfo: EventParticipantInfo  // 페이지 3: 참가자/비품 정보
+    let eventType: EventType                // 페이지 4: 행사 종류
+    let detailInfo: EventDetailInfo         // 페이지 5: 행사 취지/내용
 
-    // MARK: - CodingKeys
-    enum CodingKeys: String, CodingKey {
-        case eventName = "event_name"
-        case startDate = "start_date"
-        case endDate = "end_date"
-        case targetAudience = "target_audience"
-        case eventLocation = "event_location"
-        case staffCount = "staff_count"
-        case participantCount = "participant_count"
-        case budget
-        case requiredEquipment = "required_equipment"
-        case eventOverview = "event_overview"
-        case eventContent = "event_content"
+    // MARK: - Initializer
+    init(
+        basicInfo: EventBasicInfo,
+        participantInfo: EventParticipantInfo,
+        eventType: EventType,
+        detailInfo: EventDetailInfo
+    ) {
+        self.basicInfo = basicInfo
+        self.participantInfo = participantInfo
+        self.eventType = eventType
+        self.detailInfo = detailInfo
+    }
+
+    // MARK: - Convenience Accessors
+    var eventName: String { basicInfo.eventName }
+    var startDate: Date { basicInfo.startDate }
+    var endDate: Date { basicInfo.endDate }
+    var eventLocation: String { basicInfo.eventLocation }
+    var budget: String? { basicInfo.budget }
+    var targetAudience: String { participantInfo.targetAudience }
+    var participantCount: String { participantInfo.participantCount }
+    var eventOverview: String { detailInfo.eventOverview }
+    var eventContent: String { detailInfo.eventContent }
+
+    // MARK: - Validation
+    var isValid: Bool {
+        basicInfo.isValid && participantInfo.isValid && detailInfo.isValid
     }
 
     // MARK: - Prompt Generation
@@ -45,7 +53,6 @@ struct EventPlanRequest: Codable {
         let startDateStr = dateFormatter.string(from: startDate)
         let endDateStr = dateFormatter.string(from: endDate)
         let budgetStr = budget.map { "\($0)원" } ?? "미정"
-        let equipmentStr = requiredEquipment ?? "없음"
 
         return """
         당신은 10년 경력의 전문 행사 기획자입니다.
@@ -54,22 +61,26 @@ struct EventPlanRequest: Codable {
         ## 입력 정보
 
         - 행사명: \(eventName)
+        - 행사 종류: \(eventType.displayName)
         - 행사기간: \(startDateStr) ~ \(endDateStr)
         - 행사대상: \(targetAudience)
         - 행사장소: \(eventLocation)
-        - 스태프 인원: \(staffCount)명
         - 참가 인원: \(participantCount)명
         - 소요예산: \(budgetStr)
-        - 필요비품: \(equipmentStr)
-        - 행사개요: \(eventOverview)
-        - 행사내용: \(eventContent)
+        - 행사 취지: \(eventOverview)
+        - 행사 내용: \(eventContent)
+
+        ## 행사 종류별 특성
+
+        \(eventType.displayName): \(eventType.description)
 
         ## 작업 지침
 
         1. 행사 시작일 기준 최소 2주 전부터 행사 종료 후 정리까지의 전체 일정을 계획하세요.
         2. 모든 일정과 체크리스트는 담당 카테고리별로 분류하세요.
-        3. 스태프 인원과 참가 인원 규모에 맞는 현실적인 계획을 세우세요.
+        3. 참가 인원 규모에 맞는 현실적인 계획을 세우세요.
         4. 예산이 입력된 경우 예산 범위 내에서 실행 가능한 계획을 제시하세요.
+        5. 행사 종류(\(eventType.displayName))의 특성을 반영한 맞춤형 계획을 수립하세요.
 
         ## 담당 카테고리
 
@@ -84,6 +95,7 @@ struct EventPlanRequest: Codable {
         {
           "eventSummary": {
             "name": "행사명",
+            "type": "\(eventType.rawValue)",
             "period": "YYYY-MM-DD ~ YYYY-MM-DD",
             "totalDays": 0,
             "prepDays": 0
@@ -139,5 +151,46 @@ struct EventPlanRequest: Codable {
         5. 해당 날짜에 할 일이 없는 카테고리는 빈 배열로 두세요.
         6. JSON만 출력하세요. 다른 텍스트는 포함하지 마세요.
         """
+    }
+}
+
+// MARK: - Event Plan Form Data (UI 상태 관리용)
+/// 5페이지 폼에서 사용하는 Observable 클래스
+@Observable
+final class EventPlanFormData {
+    // 페이지 2: 기본 정보
+    var basicInfo: EventBasicInfo = EventBasicInfo()
+
+    // 페이지 3: 참가자/비품 정보
+    var participantInfo: EventParticipantInfo = EventParticipantInfo()
+
+    // 페이지 4: 행사 종류
+    var eventType: EventType = .hackathon
+
+    // 페이지 5: 행사 취지/내용
+    var detailInfo: EventDetailInfo = EventDetailInfo()
+
+    // MARK: - Validation
+    var isBasicInfoValid: Bool { basicInfo.isValid }
+    var isParticipantInfoValid: Bool { participantInfo.isValid }
+    var isDetailInfoValid: Bool { detailInfo.isValid }
+    var isComplete: Bool { isBasicInfoValid && isParticipantInfoValid && isDetailInfoValid }
+
+    // MARK: - Build Request
+    func buildRequest() -> EventPlanRequest {
+        EventPlanRequest(
+            basicInfo: basicInfo,
+            participantInfo: participantInfo,
+            eventType: eventType,
+            detailInfo: detailInfo
+        )
+    }
+
+    // MARK: - Reset
+    func reset() {
+        basicInfo = EventBasicInfo()
+        participantInfo = EventParticipantInfo()
+        eventType = .hackathon
+        detailInfo = EventDetailInfo()
     }
 }
