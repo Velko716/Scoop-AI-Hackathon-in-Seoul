@@ -14,23 +14,8 @@ class CalendarViewModel {
     var currentMonth: Date = Date()
     var events: [CalendarEvent] = []
 
-    // AI 관련 상태
-    var isLoadingAI: Bool = false
-    var aiError: String?
-
     private let calendar = Calendar.current
-    private let service = SpoonAgentService.shared
-
-    // 색상 매핑
-    private let colorMap: [String: Color] = [
-        "red": .red,
-        "orange": .orange,
-        "yellow": .yellow,
-        "green": .green,
-        "blue": .blue,
-        "purple": .purple,
-        "pink": .pink
-    ]
+    private let dataStore = EventDataStore.shared
 
     // MARK: - Computed Properties
 
@@ -173,62 +158,6 @@ class CalendarViewModel {
         currentMonth = date
     }
 
-    // MARK: - AI Event Planning
-
-    /// EventInfo를 기반으로 AI에게 일정 기획 요청
-    func planEventWithAI(eventInfo: [EventInfo]) async {
-        isLoadingAI = true
-        aiError = nil
-
-        // EventInfo를 EventInfoItem으로 변환
-        let items = eventInfo.map { EventInfoItem(label: $0.label, value: $0.value) }
-
-        let result = await service.planEvent(eventInfo: items)
-
-        switch result {
-        case .success(let response):
-            if let schedules = response.schedules {
-                // ScheduleItem을 CalendarEvent로 변환
-                let newEvents = schedules.compactMap { schedule -> CalendarEvent? in
-                    guard let startDate = parseDate(schedule.startDate),
-                          let endDate = parseDate(schedule.endDate) else {
-                        return nil
-                    }
-
-                    return CalendarEvent(
-                        title: schedule.title,
-                        startDate: startDate,
-                        endDate: endDate,
-                        color: colorMap[schedule.color.lowercased()] ?? .blue
-                    )
-                }
-
-                // 기존 이벤트를 새 이벤트로 교체
-                events = newEvents
-
-                // 첫 번째 이벤트의 월로 이동
-                if let firstEvent = newEvents.first {
-                    moveToMonth(firstEvent.startDate)
-                }
-            } else {
-                aiError = response.error ?? "일정을 파싱할 수 없습니다."
-            }
-
-        case .failure(let error):
-            aiError = error.localizedDescription
-        }
-
-        isLoadingAI = false
-    }
-
-    /// 날짜 문자열 파싱 (YYYY-MM-DD)
-    private func parseDate(_ dateString: String) -> Date? {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.locale = Locale(identifier: "ko_KR")
-        return formatter.date(from: dateString)
-    }
-
     /// 이벤트 초기화
     func clearEvents() {
         events = []
@@ -237,6 +166,19 @@ class CalendarViewModel {
     /// Mock 이벤트 로드
     func loadMockEvents() {
         events = CalendarEvent.mockEvents
+    }
+
+    /// EventDataStore에서 이벤트 로드
+    func loadEventsFromStore() {
+        let storeEvents = dataStore.calendarEvents
+        if !storeEvents.isEmpty {
+            events = storeEvents
+
+            // 첫 번째 이벤트의 월로 이동
+            if let firstEvent = storeEvents.first {
+                moveToMonth(firstEvent.startDate)
+            }
+        }
     }
 }
 

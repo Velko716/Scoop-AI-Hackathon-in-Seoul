@@ -10,92 +10,24 @@ import SwiftUI
 struct EventCalendarView: View {
     @State private var viewModel = CalendarViewModel()
     @State private var selectedDate: Date?
-    @State private var showingAIPlanner: Bool = false
 
     @GestureState private var dragOffset: CGFloat = 0
 
-    // 행사 정보 (PriorityChecklistView의 MockData 사용)
-    let eventInfo: [EventInfo] = EventInfo.mockEventData
-
     var body: some View {
-        ZStack {
-            VStack(spacing: 0) {
-                // 월 헤더
-                monthHeader
+        VStack(spacing: 0) {
+            // 월 헤더
+            monthHeader
 
-                // 요일 헤더
-                weekdayHeader
+            // 요일 헤더
+            weekdayHeader
 
-                // 캘린더 그리드 (스와이프 지원)
-                calendarContent
-
-                // AI 일정 기획 버튼
-                aiPlannerButton
-            }
-            .background(Color(.systemBackground))
-
-            // 로딩 오버레이
-            if viewModel.isLoadingAI {
-                loadingOverlay
-            }
+            // 캘린더 그리드 (스와이프 지원)
+            calendarContent
         }
-        .alert("오류", isPresented: .init(
-            get: { viewModel.aiError != nil },
-            set: { if !$0 { viewModel.aiError = nil } }
-        )) {
-            Button("확인", role: .cancel) { }
-        } message: {
-            Text(viewModel.aiError ?? "")
-        }
-    }
-
-    // MARK: - AI Planner Button
-    private var aiPlannerButton: some View {
-        Button {
-            Task {
-                await viewModel.planEventWithAI(eventInfo: eventInfo)
-            }
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "sparkles")
-                Text("AI 일정 기획")
-            }
-            .font(.pretendard(type: .semiBold, size: 16))
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(
-                LinearGradient(
-                    colors: [.blue, .purple],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .disabled(viewModel.isLoadingAI)
-    }
-
-    // MARK: - Loading Overlay
-    private var loadingOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.4)
-                .ignoresSafeArea()
-
-            VStack(spacing: 16) {
-                ProgressView()
-                    .scaleEffect(1.5)
-                    .tint(.white)
-
-                Text("AI가 일정을 기획하고 있어요...")
-                    .font(.pretendard(type: .medium, size: 16))
-                    .foregroundStyle(.white)
-            }
-            .padding(32)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+        .background(Color(.systemBackground))
+        .onAppear {
+            // EventDataStore에서 AI 응답 데이터 로드
+            viewModel.loadEventsFromStore()
         }
     }
 

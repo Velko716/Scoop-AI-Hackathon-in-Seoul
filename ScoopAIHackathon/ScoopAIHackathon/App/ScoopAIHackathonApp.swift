@@ -9,16 +9,25 @@ import SwiftUI
 
 @main
 struct ScoopAIHackathonApp: App {
+    @State private var hasCompletedOnboarding = false
+
     var body: some Scene {
         WindowGroup {
-            MainTabView()
+            if hasCompletedOnboarding {
+                MainTabView()
+            } else {
+                OnboardingView(onComplete: {
+                    hasCompletedOnboarding = true
+                })
+            }
         }
     }
 }
 
 // MARK: - Main Tab View
 struct MainTabView: View {
-    @State private var selectedTab: Tab = .calendar
+    @State private var selectedTab: Tab = .input
+    private let dataStore = EventDataStore.shared
 
     enum Tab: String, CaseIterable {
         case input = "행사 입력"
@@ -42,6 +51,12 @@ struct MainTabView: View {
                         Label(tab.rawValue, systemImage: tab.icon)
                     }
                     .tag(tab)
+            }
+        }
+        .onChange(of: dataStore.shouldNavigateToCalendar) { _, shouldNavigate in
+            if shouldNavigate {
+                selectedTab = .calendar
+                dataStore.shouldNavigateToCalendar = false
             }
         }
     }
