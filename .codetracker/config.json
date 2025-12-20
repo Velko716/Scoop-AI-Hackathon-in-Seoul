@@ -31,7 +31,14 @@
     "yarn-debug.log*",
     "yarn-error.log*",
     ".claude/",
-    ".codetracker/"
+    ".codetracker/",
+    "spoon-core/.github/",
+    "spoon-core/examples/",
+    "spoon-core/logo/",
+    "spoon-core/spoon_ai/",
+    "spoon-core/spoon_ai_sdk.egg-info/",
+    "spoon-core/tests/",
+    "spoon-env/"
   ],
   "track_extensions": [
     ".py",
