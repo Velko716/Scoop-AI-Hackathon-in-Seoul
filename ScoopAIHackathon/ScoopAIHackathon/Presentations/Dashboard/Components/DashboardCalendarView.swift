@@ -24,46 +24,54 @@ struct DashboardCalendarView: View {
     }
 }
 
+// MARK: - Calendar Colors
+private enum CalendarColors {
+    static let primaryStrong = Color(hex: "344BA5")       // 월 제목
+    static let primaryNormal = Color(hex: "3A53AF")       // 화살표
+}
+
 // MARK: - Subviews
 extension DashboardCalendarView {
     private var monthHeader: some View {
         HStack {
             Text(viewModel.displayedMonthEnglish)
-                .font(.pretendard(type: .bold, size: 20))
-                .foregroundStyle(.primary)
+                .font(.pretendard(type: .semiBold, size: 21))
+                .foregroundStyle(CalendarColors.primaryStrong)
 
             Spacer()
 
-            HStack(spacing: 16) {
+            HStack(spacing: 4) {
                 Button(action: viewModel.moveToPreviousMonth) {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(CalendarColors.primaryNormal)
+                        .frame(width: 44, height: 44)
                 }
 
                 Button(action: viewModel.moveToNextMonth) {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(CalendarColors.primaryNormal)
+                        .frame(width: 44, height: 44)
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
-        .padding(.bottom, 12)
+        .padding(.horizontal, 12)
+        .padding(.top, 12)
+        .padding(.bottom, 4)
     }
 
     private var weekdayHeader: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 22) {
             ForEach(viewModel.weekdaySymbolsMonday.indices, id: \.self) { index in
                 Text(viewModel.weekdaySymbolsMonday[index])
-                    .font(.pretendard(type: .medium, size: 13))
+                    .font(.pretendard(type: .semiBold, size: 16))
                     .foregroundStyle(weekdayHeaderColor(for: index))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    .frame(width: 28, height: 28)
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
     }
 
     private var calendarWeeks: some View {
@@ -82,9 +90,9 @@ extension DashboardCalendarView {
 
     private func weekdayHeaderColor(for index: Int) -> Color {
         if index == 6 {
-            return Color(hex: "5B7BFE")
+            return Color(hex: "596CBA")  // Primary/Normal - 일요일
         }
-        return .secondary
+        return Color(hex: "1D1E23")  // Grayscale/Black
     }
 }
 
@@ -168,12 +176,12 @@ struct DayNumberCell: View {
         VStack {
             if date != nil {
                 Text(dayNumber)
-                    .font(.pretendard(type: .medium, size: 14))
+                    .font(.pretendard(type: .medium, size: 16))
                     .foregroundStyle(dayTextColor)
                     .frame(width: 28, height: 28)
                     .background(
                         Circle()
-                            .fill(isToday ? Color(hex: "5B7BFE") : Color.clear)
+                            .fill(isToday ? Color(hex: "344BA5") : Color.clear)
                     )
             }
             Spacer()
@@ -184,9 +192,9 @@ struct DayNumberCell: View {
     private var dayTextColor: Color {
         if isToday { return .white }
         if weekdayIndex == 6 {
-            return Color(hex: "5B7BFE")
+            return Color(hex: "596CBA")  // Primary/Normal - 일요일
         }
-        return .primary
+        return Color(hex: "111111")
     }
 }
 
@@ -205,11 +213,11 @@ struct ContinuousEventBar: View {
     private let topPadding: CGFloat = 24
 
     private var barColor: Color {
-        Color(hex: "C8D3FE")
+        isSelected ? Color(hex: "7787C6") : Color(hex: "E8EAF5")  // Primary/Assistive : Primary/50
     }
 
     private var textColor: Color {
-        Color(hex: "5B7BFE")
+        isSelected ? .white : Color(hex: "596CBA")  // White : Primary/Normal
     }
 
     private var startDayIndex: Int {
@@ -268,7 +276,7 @@ struct ContinuousEventBar: View {
             HStack(spacing: 0) {
                 if isStartInWeek {
                     Text(event.title)
-                        .font(.pretendard(type: .medium, size: 10))
+                        .font(.pretendard(type: .medium, size: 12))
                         .foregroundStyle(textColor)
                         .lineLimit(1)
                         .padding(.horizontal, 6)
@@ -276,12 +284,8 @@ struct ContinuousEventBar: View {
                 Spacer(minLength: 0)
             }
             .frame(width: barWidth, height: barHeight)
-            .background(isSelected ? barColor : barColor.opacity(0.7))
+            .background(barColor)
             .clipShape(barShape)
-            .overlay(
-                barShape
-                    .stroke(isSelected ? textColor : Color.clear, lineWidth: 1.5)
-            )
             .offset(x: startX + 2, y: yOffset)
             .onTapGesture {
                 onTap()

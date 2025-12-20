@@ -7,76 +7,82 @@
 
 import SwiftUI
 
+// MARK: - Design Colors
+private enum DashboardColors {
+    static let backgroundNormal = Color(hex: "E8EAF5")    // Primary/50
+    static let labelAssistive = Color(hex: "1D1E23")      // Grayscale/Black
+    static let labelNormal = Color(hex: "6D758A")         // Grayscale/300
+}
+
 struct DashboardMainView: View {
     @State private var viewModel = DashboardViewModel()
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
                 logoSection
-                Divider()
                 calendarSection
-                Divider()
                 checklistSection
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background(DashboardColors.backgroundNormal)
     }
 }
 
 // MARK: - Logo Section
 extension DashboardMainView {
     private var logoSection: some View {
-        VStack(spacing: 8) {
-            Text("Logo")
-                .font(.pretendard(type: .bold, size: 32))
-                .foregroundStyle(.primary)
-
-            Text(viewModel.formattedCurrentDate)
-                .font(.pretendard(type: .medium, size: 16))
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-        .background(Color(.systemBackground))
+        Text("LOGO")
+            .font(.pretendard(type: .semiBold, size: 24))
+            .foregroundStyle(DashboardColors.labelAssistive)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 16)
     }
 }
 
 // MARK: - Calendar Section
 extension DashboardMainView {
     private var calendarSection: some View {
-        VStack(spacing: 0) {
-            DashboardSectionHeader(
-                title: "캘린더",
-                isExpanded: viewModel.isCalendarExpanded,
-                onToggle: viewModel.toggleCalendarSection
-            )
+        VStack(alignment: .leading, spacing: 8) {
+            // 섹션 헤더
+            HStack {
+                Text("행사 일정")
+                    .font(.pretendard(type: .semiBold, size: 15))
+                    .foregroundStyle(DashboardColors.labelAssistive)
 
-            if viewModel.isCalendarExpanded {
-                DashboardCalendarView(viewModel: viewModel)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                Spacer()
+
+                Button(action: {
+                    // 편집 액션
+                }) {
+                    Text("편집")
+                        .font(.pretendard(type: .semiBold, size: 15))
+                        .foregroundStyle(DashboardColors.labelNormal)
+                }
             }
+            .padding(.horizontal, 16)
+
+            // 캘린더 뷰
+            DashboardCalendarView(viewModel: viewModel)
         }
-        .background(Color(.systemBackground))
     }
 }
 
 // MARK: - Checklist Section
 extension DashboardMainView {
     private var checklistSection: some View {
-        VStack(spacing: 0) {
-            DashboardSectionHeader(
-                title: "체크리스트",
-                isExpanded: viewModel.isChecklistExpanded,
-                onToggle: viewModel.toggleChecklistSection
-            )
+        VStack(alignment: .leading, spacing: 8) {
+            // 섹션 헤더
+            Text("To Do")
+                .font(.pretendard(type: .semiBold, size: 15))
+                .foregroundStyle(DashboardColors.labelAssistive)
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
 
-            if viewModel.isChecklistExpanded {
-                IntegratedChecklistView(viewModel: viewModel)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
+            // 체크리스트 뷰
+            IntegratedChecklistView(viewModel: viewModel)
         }
-        .background(Color(.systemGroupedBackground))
     }
 }
 
