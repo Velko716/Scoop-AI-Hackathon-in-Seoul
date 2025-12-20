@@ -1,4 +1,4 @@
-RunSheet
+#RunSheet
 > 행사 준비, 변수 하나에 일정 전체가 흔들리죠.
 > RunSheet가 확실하게 잡아드립니다.
 Apple Developer Academy @ Seoul AI Hackathon
