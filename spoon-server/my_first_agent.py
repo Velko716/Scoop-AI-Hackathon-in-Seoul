@@ -83,10 +83,11 @@ class MyFirstAgent(ToolCallAgent):
             CalculatorTool()
         ])
 
-        # LLM 설정 (Gemini 사용)
+        # LLM 설정 (OpenRouter 사용)
         llm = ChatBot(
-            llm_provider="gemini",
-            model_name="gemini-2.5-flash"
+            llm_provider="openai",
+            model_name="google/gemini-2.5-flash",
+            base_url="https://openrouter.ai/api/v1"
         )
 
         super().__init__(

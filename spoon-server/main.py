@@ -58,17 +58,11 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"  ⚠️ 행사 기획 에이전트 초기화 실패: {e}")
 
-    # 사용 가능한 프로바이더 확인
-    print("\n📋 사용 가능한 LLM 프로바이더:")
-    for provider in LLMProvider:
-        key_names = {
-            LLMProvider.GEMINI: "GEMINI_API_KEY",
-            LLMProvider.OPENAI: "OPENAI_API_KEY",
-            LLMProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
-        }
-        api_key = os.getenv(key_names[provider])
-        status = "✅ 활성화" if api_key and not api_key.startswith("your_") else "❌ API 키 없음"
-        print(f"  - {provider.value}: {status}")
+    # OpenRouter 상태 확인
+    openrouter_key = os.getenv("OPENAI_API_KEY")
+    openrouter_status = "✅ 활성화" if openrouter_key and openrouter_key.startswith("sk-or-") else "❌ API 키 없음"
+    print(f"\n📋 OpenRouter API: {openrouter_status}")
+    print("   (Gemini, OpenAI, Anthropic 모든 모델 사용 가능)")
 
     print("\n✅ 서버 준비 완료!")
     yield
@@ -203,32 +197,26 @@ async def health_check():
 
 @app.get("/providers")
 async def list_providers():
-    """사용 가능한 LLM 프로바이더 목록"""
-    providers = []
+    """사용 가능한 LLM 프로바이더 목록 (OpenRouter 통합)"""
+    # OpenRouter 키가 있으면 모든 프로바이더 사용 가능
+    openrouter_key = os.getenv("OPENAI_API_KEY")
+    openrouter_available = bool(openrouter_key and openrouter_key.startswith("sk-or-"))
 
     specialties = {
-        LLMProvider.GEMINI: "빠른 응답, 멀티모달, 무료",
+        LLMProvider.GEMINI: "빠른 응답, 멀티모달",
         LLMProvider.OPENAI: "창의적 글쓰기, 범용성",
         LLMProvider.ANTHROPIC: "코딩, 긴 문서 분석, 정확성",
     }
 
-    key_names = {
-        LLMProvider.GEMINI: "GEMINI_API_KEY",
-        LLMProvider.OPENAI: "OPENAI_API_KEY",
-        LLMProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
-    }
-
+    providers = []
     for provider in LLMProvider:
-        api_key = os.getenv(key_names[provider])
-        available = bool(api_key and not api_key.startswith("your_"))
-
         providers.append(ProviderInfo(
             name=provider.value,
-            available=available,
+            available=openrouter_available,
             specialty=specialties[provider]
         ))
 
-    return {"providers": providers}
+    return {"providers": providers, "gateway": "OpenRouter"}
 
 
 @app.post("/chat", response_model=ChatResponse)
