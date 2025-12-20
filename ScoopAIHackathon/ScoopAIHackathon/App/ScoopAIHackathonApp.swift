@@ -11,7 +11,7 @@ import SwiftUI
 struct ScoopAIHackathonApp: App {
     var body: some Scene {
         WindowGroup {
-            InputEventView()
+            OnboardingView()
         }
     }
 }

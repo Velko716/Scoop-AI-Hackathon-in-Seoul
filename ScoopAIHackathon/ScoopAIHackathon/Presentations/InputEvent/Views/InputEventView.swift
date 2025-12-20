@@ -7,28 +7,51 @@
 
 import SwiftUI
 
+/// 행사 정보 입력 메인 컨테이너
+/// Step 1~4를 관리하고 네비게이션 처리
 struct InputEventView: View {
 
     // MARK: - Properties
 
     @State private var viewModel = InputEventViewModel()
+    @Environment(\.dismiss) private var dismiss
 
     // MARK: - Body
 
     var body: some View {
         NavigationStack {
-            Form {
-                // MARK: - 필수 입력 섹션
-                requiredSection
+            Group {
+                switch viewModel.currentStep {
+                case .basicInfo:
+                    BasicInfoView(
+                        viewModel: viewModel,
+                        onNext: { viewModel.nextStep() },
+                        onBack: { viewModel.previousStep() },
+                    )
 
-                // MARK: - 선택 입력 섹션
-                optionalSection
+                case .participantInfo:
+                    ParticipantInfoView(
+                        viewModel: viewModel,
+                        onBack: { viewModel.previousStep() },
+                        onNext: { viewModel.nextStep() }
+                    )
 
-                // MARK: - 제출 버튼
-                submitSection
+                case .eventType:
+                    EventTypeSelectionView(
+                        viewModel: viewModel,
+                        onBack: { viewModel.previousStep() },
+                        onNext: { viewModel.nextStep() }
+                    )
+
+                case .detailInfo:
+                    EventDetailView(
+                        viewModel: viewModel,
+                        onBack: { viewModel.previousStep() },
+                        onNext: { viewModel.nextStep() }
+                    )
+                }
             }
-            .navigationTitle("행사 기획")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarHidden(true)
             .disabled(viewModel.isLoading)
             .overlay {
                 if viewModel.isLoading {
@@ -44,7 +67,7 @@ struct InputEventView: View {
             }
             .navigationDestination(isPresented: $viewModel.showResult) {
                 if let response = viewModel.eventPlanResponse {
-                    EventPlanResultView(response: response)
+                    EmptyView()
                 }
             }
         }
@@ -54,111 +77,6 @@ struct InputEventView: View {
 // MARK: - View Components
 
 private extension InputEventView {
-
-    // MARK: - Required Section
-
-    var requiredSection: some View {
-        Section {
-            // 행사명
-            TextField("행사명", text: $viewModel.eventName)
-
-            // 행사기간
-            DatePicker("시작일", selection: $viewModel.startDate, displayedComponents: .date)
-            DatePicker("종료일", selection: $viewModel.endDate, displayedComponents: .date)
-
-            // 행사대상
-            TextField("행사대상", text: $viewModel.targetAudience)
-
-            // 행사장소
-            TextField("행사장소", text: $viewModel.eventLocation)
-
-            // 인원
-            HStack {
-                Text("스태프")
-                TextField("인원", text: $viewModel.staffCount)
-                    .keyboardType(.numberPad)
-                    .multilineTextAlignment(.trailing)
-                Text("명")
-            }
-
-            HStack {
-                Text("참가자")
-                TextField("인원", text: $viewModel.participantCount)
-                    .keyboardType(.numberPad)
-                    .multilineTextAlignment(.trailing)
-                Text("명")
-            }
-
-            // 행사개요
-            TextField("행사개요", text: $viewModel.eventOverview, axis: .vertical)
-                .lineLimit(2...4)
-
-            // 행사내용
-            TextField("행사내용", text: $viewModel.eventContent, axis: .vertical)
-                .lineLimit(3...6)
-
-        } header: {
-            Text("필수 정보")
-        } footer: {
-            Text("모든 필수 항목을 입력해주세요")
-        }
-    }
-
-    // MARK: - Optional Section
-
-    var optionalSection: some View {
-        Section {
-            // 소요예산
-            HStack {
-                Text("소요예산")
-                TextField("금액", text: $viewModel.budget)
-                    .keyboardType(.numberPad)
-                    .multilineTextAlignment(.trailing)
-                Text("원")
-            }
-
-            // 필요비품
-            TextField("필요비품", text: $viewModel.requiredEquipment, axis: .vertical)
-                .lineLimit(2...4)
-
-        } header: {
-            Text("선택 정보")
-        } footer: {
-            Text("입력하지 않아도 계획을 생성할 수 있습니다")
-        }
-    }
-
-    // MARK: - Submit Section
-
-    var submitSection: some View {
-        Section {
-            Button {
-                Task {
-                    await viewModel.generateEventPlan()
-                }
-            } label: {
-                HStack {
-                    Spacer()
-                    Text("행사 계획 생성")
-                        .fontWeight(.semibold)
-                    Spacer()
-                }
-            }
-            .disabled(!viewModel.isValidInput)
-
-            Button(role: .destructive) {
-                viewModel.resetForm()
-            } label: {
-                HStack {
-                    Spacer()
-                    Text("초기화")
-                    Spacer()
-                }
-            }
-        }
-    }
-
-    // MARK: - Loading Overlay
 
     var loadingOverlay: some View {
         ZStack {
