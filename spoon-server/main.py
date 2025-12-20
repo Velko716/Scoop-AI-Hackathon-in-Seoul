@@ -159,11 +159,20 @@ class ScheduleItem(BaseModel):
     color: str
 
 
+class TodoItem(BaseModel):
+    """체크리스트 항목"""
+    title: str
+    scheduleId: str  # 연관된 스케줄 ID (title-startDate)
+    priority: int    # 우선순위 (1: 높음, 2: 중간, 3: 낮음)
+    category: str    # 카테고리 (기획, 예산, 장소, 홍보, 운영 등)
+
+
 class EventPlanResponse(BaseModel):
     """행사 기획 응답 모델"""
     success: bool
     event_name: Optional[str] = None
     schedules: Optional[list[ScheduleItem]] = None
+    todos: Optional[list[TodoItem]] = None  # 체크리스트 추가
     raw_response: Optional[str] = None
     error: Optional[str] = None
 
@@ -347,44 +356,38 @@ async def plan_event(request: EventPlanRequest):
         if not event_end:
             event_end = event_start
 
-        # 오늘부터 행사 시작일까지 남은 일수 계산
-        days_until_event = (event_start - today).days
-        if days_until_event < 1:
-            days_until_event = 1  # 최소 1일
+        # 준비 기간은 항상 45일로 고정 (행사 시작일 기준 역산)
+        # 과거/미래 행사 모두 동일하게 처리
+        preparation_days = 45
 
-        # 준비 일정 템플릿 (30일 기준, 비율로 조정됨)
+        # 준비 일정 템플릿 (행사 시작일 기준 역산)
+        # days_before: 행사 시작일 기준 몇 일 전에 시작
+        # duration: 작업 기간 (일)
         preparation_templates = [
-            {"title": "행사 기획서 확정", "ratio": 1.0, "duration_ratio": 0.1, "color": "purple"},
-            {"title": "예산 확보 및 승인", "ratio": 0.93, "duration_ratio": 0.17, "color": "blue"},
-            {"title": "장소 섭외 및 계약", "ratio": 0.7, "duration_ratio": 0.1, "color": "blue"},
-            {"title": "협력업체 선정", "ratio": 0.6, "duration_ratio": 0.13, "color": "green"},
-            {"title": "홍보물 제작", "ratio": 0.47, "duration_ratio": 0.17, "color": "orange"},
-            {"title": "참가자 모집", "ratio": 0.47, "duration_ratio": 0.33, "color": "green"},
-            {"title": "비품 준비", "ratio": 0.23, "duration_ratio": 0.1, "color": "yellow"},
-            {"title": "리허설 계획 수립", "ratio": 0.17, "duration_ratio": 0.07, "color": "orange"},
-            {"title": "최종 점검", "ratio": 0.1, "duration_ratio": 0.07, "color": "red"},
-            {"title": "참가자 안내 발송", "ratio": 0.1, "duration_ratio": 0.03, "color": "blue"},
-            {"title": "현장 세팅", "ratio": 0.03, "duration_ratio": 0.03, "color": "orange"},
-            {"title": "리허설", "ratio": 0.03, "duration_ratio": 0.03, "color": "purple"},
+            {"title": "행사 기획서 확정", "days_before": 45, "duration": 5, "color": "purple"},
+            {"title": "예산 확보 및 승인", "days_before": 42, "duration": 7, "color": "blue"},
+            {"title": "장소 섭외 및 계약", "days_before": 35, "duration": 5, "color": "blue"},
+            {"title": "협력업체 선정", "days_before": 30, "duration": 5, "color": "green"},
+            {"title": "홍보물 제작", "days_before": 25, "duration": 7, "color": "orange"},
+            {"title": "참가자 모집", "days_before": 25, "duration": 15, "color": "green"},
+            {"title": "비품 준비", "days_before": 14, "duration": 5, "color": "yellow"},
+            {"title": "리허설 계획 수립", "days_before": 10, "duration": 3, "color": "orange"},
+            {"title": "최종 점검", "days_before": 7, "duration": 3, "color": "red"},
+            {"title": "참가자 안내 발송", "days_before": 5, "duration": 2, "color": "blue"},
+            {"title": "현장 세팅", "days_before": 2, "duration": 1, "color": "orange"},
+            {"title": "리허설", "days_before": 1, "duration": 1, "color": "purple"},
         ]
 
         schedules = []
 
         for template in preparation_templates:
-            # 비율에 따라 일수 계산
-            days_before = max(1, int(days_until_event * template["ratio"]))
-            duration = max(1, int(days_until_event * template["duration_ratio"]))
+            # 행사 시작일 기준으로 역산하여 날짜 계산
+            start = event_start - timedelta(days=template["days_before"])
+            end = start + timedelta(days=template["duration"] - 1)
 
-            start = event_start - timedelta(days=days_before)
-            end = start + timedelta(days=duration - 1)
-
-            # 오늘 이전 날짜는 오늘로 조정
-            if start < today:
-                start = today
-            if end < start:
-                end = start
-
-            # 행사 시작일 이후는 제외
+            # 행사 시작일 이후로 넘어가면 행사 전날까지로 조정
+            if end >= event_start:
+                end = event_start - timedelta(days=1)
             if start >= event_start:
                 continue
 
@@ -395,31 +398,133 @@ async def plan_event(request: EventPlanRequest):
                 color=template["color"]
             ))
 
-        # 행사 일정 추가 (시작일 ~ 마감일)
-        if event_start == event_end:
-            # 단일일 행사
-            schedules.append(ScheduleItem(
-                title=f"[D-Day] {event_name}",
-                startDate=event_start.strftime("%Y-%m-%d"),
-                endDate=event_end.strftime("%Y-%m-%d"),
-                color="red"
-            ))
-        else:
-            # 다일 행사
-            schedules.append(ScheduleItem(
-                title=f"[행사] {event_name}",
-                startDate=event_start.strftime("%Y-%m-%d"),
-                endDate=event_end.strftime("%Y-%m-%d"),
-                color="red"
-            ))
+        # 행사 일정 추가 (시작일 ~ 마감일 전체를 하나의 행사로 표시)
+        schedules.append(ScheduleItem(
+            title=f"[행사] {event_name}",
+            startDate=event_start.strftime("%Y-%m-%d"),
+            endDate=event_end.strftime("%Y-%m-%d"),
+            color="red"
+        ))
 
         # 시작일 기준 정렬
         schedules.sort(key=lambda x: x.startDate)
 
+        # ============================================
+        # 체크리스트(Todo) 생성 - 우선순위 기반
+        # ============================================
+        # 각 스케줄에 대한 체크리스트 템플릿
+        todo_templates = {
+            "행사 기획서 확정": [
+                {"title": "행사 목표 및 KPI 정의", "priority": 1, "category": "기획"},
+                {"title": "세부 프로그램 구성", "priority": 1, "category": "기획"},
+                {"title": "예산 초안 작성", "priority": 2, "category": "예산"},
+                {"title": "이해관계자 승인 받기", "priority": 1, "category": "기획"},
+            ],
+            "예산 확보 및 승인": [
+                {"title": "상세 예산안 작성", "priority": 1, "category": "예산"},
+                {"title": "결재 서류 준비", "priority": 1, "category": "예산"},
+                {"title": "예산 승인 완료", "priority": 1, "category": "예산"},
+            ],
+            "장소 섭외 및 계약": [
+                {"title": "후보 장소 리스트업", "priority": 1, "category": "장소"},
+                {"title": "장소 답사 및 확인", "priority": 1, "category": "장소"},
+                {"title": "계약서 검토 및 서명", "priority": 1, "category": "장소"},
+                {"title": "장소 사용료 입금", "priority": 2, "category": "예산"},
+            ],
+            "협력업체 선정": [
+                {"title": "케이터링 업체 선정", "priority": 2, "category": "운영"},
+                {"title": "음향/조명 업체 섭외", "priority": 2, "category": "운영"},
+                {"title": "계약 조건 협의", "priority": 2, "category": "운영"},
+            ],
+            "홍보물 제작": [
+                {"title": "홍보 컨셉 확정", "priority": 1, "category": "홍보"},
+                {"title": "포스터/배너 디자인", "priority": 1, "category": "홍보"},
+                {"title": "SNS 홍보 콘텐츠 제작", "priority": 2, "category": "홍보"},
+                {"title": "인쇄물 발주", "priority": 2, "category": "홍보"},
+            ],
+            "참가자 모집": [
+                {"title": "참가 신청 폼 생성", "priority": 1, "category": "홍보"},
+                {"title": "홍보 채널 배포", "priority": 1, "category": "홍보"},
+                {"title": "참가자 명단 관리", "priority": 2, "category": "운영"},
+                {"title": "참가 확정 안내 발송", "priority": 2, "category": "운영"},
+            ],
+            "비품 준비": [
+                {"title": "필요 비품 목록 작성", "priority": 1, "category": "운영"},
+                {"title": "비품 구매/대여", "priority": 1, "category": "운영"},
+                {"title": "비품 수량 확인", "priority": 2, "category": "운영"},
+            ],
+            "리허설 계획 수립": [
+                {"title": "리허설 일정 확정", "priority": 1, "category": "운영"},
+                {"title": "스태프 역할 분담", "priority": 1, "category": "운영"},
+                {"title": "진행 시나리오 작성", "priority": 1, "category": "기획"},
+            ],
+            "최종 점검": [
+                {"title": "체크리스트 최종 확인", "priority": 1, "category": "운영"},
+                {"title": "비상 연락망 정리", "priority": 1, "category": "운영"},
+                {"title": "날씨/교통 상황 체크", "priority": 2, "category": "운영"},
+            ],
+            "참가자 안내 발송": [
+                {"title": "안내 메일/문자 발송", "priority": 1, "category": "운영"},
+                {"title": "오시는 길 안내 첨부", "priority": 2, "category": "운영"},
+                {"title": "준비물 안내", "priority": 2, "category": "운영"},
+            ],
+            "현장 세팅": [
+                {"title": "장소 도착 및 점검", "priority": 1, "category": "운영"},
+                {"title": "테이블/의자 배치", "priority": 1, "category": "운영"},
+                {"title": "음향/조명 테스트", "priority": 1, "category": "운영"},
+                {"title": "안내 표지판 설치", "priority": 2, "category": "운영"},
+            ],
+            "리허설": [
+                {"title": "전체 리허설 진행", "priority": 1, "category": "운영"},
+                {"title": "문제점 파악 및 수정", "priority": 1, "category": "운영"},
+                {"title": "스태프 최종 브리핑", "priority": 1, "category": "운영"},
+            ],
+        }
+
+        # 행사 진행 체크리스트
+        event_todos = [
+            {"title": "행사장 최종 점검", "priority": 1, "category": "운영"},
+            {"title": "참가자 등록 데스크 운영", "priority": 1, "category": "운영"},
+            {"title": "행사 진행 모니터링", "priority": 1, "category": "운영"},
+            {"title": "사진/영상 촬영", "priority": 2, "category": "홍보"},
+            {"title": "참가자 만족도 조사", "priority": 3, "category": "기획"},
+            {"title": "행사 종료 후 정리", "priority": 1, "category": "운영"},
+        ]
+
+        todos = []
+
+        # 각 스케줄에 대해 체크리스트 생성
+        for schedule in schedules:
+            schedule_id = f"{schedule.title}-{schedule.startDate}"
+
+            # 행사 본행사
+            if schedule.title.startswith("[행사]"):
+                for todo_template in event_todos:
+                    todos.append(TodoItem(
+                        title=todo_template["title"],
+                        scheduleId=schedule_id,
+                        priority=todo_template["priority"],
+                        category=todo_template["category"]
+                    ))
+            else:
+                # 준비 일정
+                template_todos = todo_templates.get(schedule.title, [])
+                for todo_template in template_todos:
+                    todos.append(TodoItem(
+                        title=todo_template["title"],
+                        scheduleId=schedule_id,
+                        priority=todo_template["priority"],
+                        category=todo_template["category"]
+                    ))
+
+        # 우선순위 기준 정렬 (priority 낮을수록 높은 우선순위)
+        todos.sort(key=lambda x: (x.priority, x.scheduleId))
+
         return EventPlanResponse(
             success=True,
             event_name=event_name,
-            schedules=schedules
+            schedules=schedules,
+            todos=todos
         )
 
     except Exception as e:
