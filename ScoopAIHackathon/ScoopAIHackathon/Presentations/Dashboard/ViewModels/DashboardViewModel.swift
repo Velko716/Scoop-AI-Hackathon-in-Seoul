@@ -385,7 +385,7 @@ final class DashboardViewModel {
 
     private func loadMockTasksForEvents() {
         for event in events {
-            let tasks = TodoTask.mockTasksForEvent(event.id)
+            let tasks = TodoTask.tasksForEvent(eventId: event.id, eventTitle: event.title)
             allTasks.append(contentsOf: tasks)
         }
     }
