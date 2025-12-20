@@ -10,7 +10,7 @@ Full-stack AI chat application for the Apple Developer Academy Scoop AI Hackatho
 
 ```
 iOS App (SwiftUI) ──HTTP/JSON──▶ FastAPI Server (SpoonOS) ──API──▶ LLM Provider
-     ChatView                        main.py                    Gemini/OpenAI/Claude
+   InputEventView                     main.py                   Gemini/OpenAI/Claude
 ```
 
 - **iOS**: Swift 6.0, SwiftUI, async/await, iOS 26.0+
@@ -52,19 +52,51 @@ pip install spoon-ai-sdk spoon-toolkits fastapi uvicorn python-dotenv
 python spoon-server/my_first_agent.py
 ```
 
-## Key Components
+## iOS App Structure (MVVM)
 
-### iOS (`ScoopAIHackathon/ScoopAIHackathon/`)
+```
+ScoopAIHackathon/ScoopAIHackathon/
+├── App/
+│   └── ScoopAIHackathonApp.swift     # Entry point → InputEventView
+├── Presentations/
+│   ├── InputEvent/                    # 이벤트 입력 화면 (현재 메인 화면)
+│   │   ├── Views/InputEventView.swift
+│   │   ├── ViewModels/InputEventViewModel.swift
+│   │   └── Component/InputEventCom.swift
+│   ├── Home/                          # 홈 화면
+│   │   ├── Views/HomeView.swift
+│   │   ├── ViewModels/HomeViewModel.swift
+│   │   └── Component/HomeCom.swift
+│   └── Chat/                          # 채팅 화면
+│       ├── Views/ChatView.swift
+│       ├── ViewModels/ChatViewModel.swift
+│       └── Component/MessageBubble.swift
+├── Services/
+│   └── SpoonAgentService.swift        # HTTP client (@Observable, @MainActor)
+├── Models/
+│   ├── ChatMessage.swift
+│   ├── HealthCheck.swift
+│   ├── ServerStatus.swift
+│   └── DTO/
+│       ├── ChatRequest.swift
+│       └── ChatResponse.swift
+├── Common/
+│   ├── Error/SpoonAgentError.swift
+│   └── Helper/SpoonAgentService+.swift
+└── Resource/Font/Font.swift
+```
 
-- `Services/SpoonAgentService.swift` - Singleton HTTP client (`@Observable`, `@MainActor`), handles `/chat` and `/health` endpoints
-- `Presentations/Chat/ChatView.swift` - Main chat UI with connection status indicator
-- `Models/DTO/` - `ChatRequest` and `ChatResponse` DTOs matching server models
+### Key iOS Components
 
-### Python (`spoon-server/`)
+- **Entry Point**: `InputEventView` (앱 시작 화면)
+- **SpoonAgentService**: 싱글톤 HTTP 클라이언트, `/chat` 및 `/health` 엔드포인트 처리
+- **ChatView**: 에이전트와 실시간 채팅 UI (연결 상태 표시, 자동 스크롤)
 
-- `main.py` - FastAPI server with lifespan-managed agents, CORS enabled
-- `my_first_agent.py` - Basic `ToolCallAgent` with sample tools (Greeting, Calculator)
-- `multi_model_agent.py` - `MultiModelAgent` and `FallbackAgent` (Gemini→OpenAI→Claude chain)
+## Python Server (`spoon-server/`)
+
+- `main.py` - FastAPI 서버, lifespan으로 에이전트 관리, CORS 활성화
+- `my_first_agent.py` - 기본 `ToolCallAgent` (Greeting, Calculator 도구)
+- `multi_model_agent.py` - `MultiModelAgent` 및 `FallbackAgent` (Gemini→OpenAI→Claude)
 
 ## SpoonOS Agent Pattern
 
@@ -95,7 +127,7 @@ response = await agent.run("user message")
 
 - `spoon-server/.env` - API keys (gitignored): `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
 - `GoogleService-Info.plist`, `Config.xcconfig` - gitignored iOS config files
-- iOS requires App Transport Security exception for localhost (already configured in Info.plist)
+- iOS requires App Transport Security exception for localhost (already configured)
 
 ## API Endpoints
 
@@ -107,7 +139,7 @@ response = await agent.run("user message")
 | POST | `/chat` | Chat with optional `provider` param |
 | POST | `/chat/fallback` | Auto-fallback through provider chain |
 
-API docs available at `http://localhost:8000/docs` when server is running.
+API docs: `http://localhost:8000/docs`
 
 ## Development Workflow
 
