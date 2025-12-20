@@ -7,8 +7,35 @@
 
 import SwiftUI
 
+// MARK: - Event Info Model
+struct EventInfo: Identifiable {
+    let id = UUID()
+    let label: String
+    let value: String
+    let icon: String
+}
+
+// MARK: - Mock Event Data
+extension EventInfo {
+    static let mockEventData: [EventInfo] = [
+        EventInfo(label: "행사명", value: "Apple Developer Academy 송년 네트워킹 파티", icon: "star.fill"),
+        EventInfo(label: "행사 일정", value: "2024년 12월 28일 (토) 18:00 - 22:00", icon: "calendar"),
+        EventInfo(label: "행사 장소", value: "서울특별시 강남구 테헤란로 521 파르나스타워 42층", icon: "mappin.and.ellipse"),
+        EventInfo(label: "행사 예산", value: "5,000,000원", icon: "wonsign.circle"),
+        EventInfo(label: "행사 대상", value: "Apple Developer Academy @POSTECH 러너 및 졸업생", icon: "person.2.fill"),
+        EventInfo(label: "행사 인원", value: "약 150명 (러너 100명, 졸업생 50명)", icon: "person.3.fill"),
+        EventInfo(label: "행사 비품", value: "음향장비, 빔프로젝터, 명찰, 현수막, 포토존 소품", icon: "shippingbox.fill"),
+        EventInfo(label: "행사 종류", value: "네트워킹 파티 / 송년회", icon: "sparkles"),
+        EventInfo(label: "행사 취지", value: "한 해를 마무리하며 러너들 간의 친목 도모 및 졸업생과의 네트워킹 기회 제공", icon: "lightbulb.fill"),
+        EventInfo(label: "행사 내용", value: "개회식, 올해의 프로젝트 시상, 네트워킹 타임, 경품 추첨, 포토타임", icon: "list.bullet.clipboard")
+    ]
+}
+
 struct PriorityChecklistView: View {
     @State private var viewModel = ChecklistViewModel()
+
+    // Mock 행사 정보
+    let eventInfo: [EventInfo] = EventInfo.mockEventData
 
     var body: some View {
         VStack(spacing: 0) {
@@ -58,6 +85,17 @@ struct PriorityChecklistView: View {
     // MARK: - Task List
     private var taskList: some View {
         List {
+            // 행사 정보 섹션
+            Section {
+                ForEach(eventInfo) { info in
+                    eventInfoRow(for: info)
+                }
+            } header: {
+                Text("행사 정보")
+                    .font(.pretendard(type: .semiBold, size: 13))
+                    .foregroundStyle(.secondary)
+            }
+
             // 미완료 섹션
             if !viewModel.incompleteTasks.isEmpty {
                 Section {
@@ -87,6 +125,29 @@ struct PriorityChecklistView: View {
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .animation(.spring(duration: 0.35, bounce: 0.2), value: viewModel.sortedTasks)
+    }
+
+    // MARK: - Event Info Row
+    private func eventInfoRow(for info: EventInfo) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: info.icon)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(.blue)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(info.label)
+                    .font(.pretendard(type: .semiBold, size: 13))
+                    .foregroundStyle(.secondary)
+
+                Text(info.value)
+                    .font(.pretendard(type: .medium, size: 15))
+                    .foregroundStyle(.primary)
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 8)
     }
 
     // MARK: - Task Row

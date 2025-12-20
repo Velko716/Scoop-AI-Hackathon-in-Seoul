@@ -157,6 +157,73 @@ class SpoonAgentService {
             return false
         }
     }
+
+    /// 행사 기획 요청
+    func planEvent(eventInfo: [EventInfoItem]) async -> Result<EventPlanResponse, SpoonAgentError> {
+        guard let url = URL(string: "\(baseURL)/plan-event") else {
+            return .failure(.invalidURL)
+        }
+
+        await MainActor.run {
+            self.isLoading = true
+            self.errorMessage = nil
+        }
+
+        defer {
+            Task { @MainActor in
+                self.isLoading = false
+            }
+        }
+
+        // 요청 생성
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 60 // AI 응답에 시간이 걸릴 수 있음
+
+        let planRequest = EventPlanRequest(eventInfo: eventInfo)
+
+        do {
+            request.httpBody = try JSONEncoder().encode(planRequest)
+        } catch {
+            return .failure(.decodingError(error))
+        }
+
+        // 요청 전송
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            // HTTP 상태 코드 확인
+            if let httpResponse = response as? HTTPURLResponse,
+               httpResponse.statusCode != 200 {
+                return .failure(.serverError("HTTP \(httpResponse.statusCode)"))
+            }
+
+            // 응답 파싱
+            let planResponse = try JSONDecoder().decode(EventPlanResponse.self, from: data)
+
+            if planResponse.success {
+                return .success(planResponse)
+            } else {
+                let errorMsg = planResponse.error ?? "알 수 없는 오류"
+                await MainActor.run {
+                    self.errorMessage = errorMsg
+                }
+                return .failure(.serverError(errorMsg))
+            }
+
+        } catch let error as DecodingError {
+            await MainActor.run {
+                self.errorMessage = error.localizedDescription
+            }
+            return .failure(.decodingError(error))
+        } catch {
+            await MainActor.run {
+                self.errorMessage = error.localizedDescription
+            }
+            return .failure(.networkError(error))
+        }
+    }
 }
 
 
