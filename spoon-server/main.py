@@ -25,16 +25,18 @@ load_dotenv()
 # 에이전트 임포트
 from my_first_agent import MyFirstAgent
 from multi_model_agent import MultiModelAgent, LLMProvider, FallbackAgent
+from event_planner_agent import EventPlannerAgent
 
 # 전역 에이전트 인스턴스
 agents: dict = {}
 fallback_agent: Optional[FallbackAgent] = None
+event_planner: Optional[EventPlannerAgent] = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """서버 시작/종료 시 에이전트 초기화/정리"""
-    global agents, fallback_agent
+    global agents, fallback_agent, event_planner
 
     print("🚀 SpoonOS 에이전트 초기화 중...")
 
@@ -48,6 +50,13 @@ async def lifespan(app: FastAPI):
         print("  ✅ Fallback 에이전트 준비 완료")
     except Exception as e:
         print(f"  ⚠️ Fallback 에이전트 초기화 실패: {e}")
+
+    # 행사 기획 전문가 에이전트
+    try:
+        event_planner = EventPlannerAgent()
+        print("  ✅ 행사 기획 전문가 에이전트 준비 완료")
+    except Exception as e:
+        print(f"  ⚠️ 행사 기획 에이전트 초기화 실패: {e}")
 
     # 사용 가능한 프로바이더 확인
     print("\n📋 사용 가능한 LLM 프로바이더:")
@@ -123,6 +132,46 @@ class ProviderInfo(BaseModel):
     name: str
     available: bool
     specialty: str
+
+
+class EventInfoItem(BaseModel):
+    """행사 정보 항목"""
+    label: str
+    value: str
+
+
+class EventPlanRequest(BaseModel):
+    """행사 기획 요청 모델"""
+    event_info: list[EventInfoItem]
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "event_info": [
+                    {"label": "행사명", "value": "송년회"},
+                    {"label": "행사 일정", "value": "2024-12-28"},
+                    {"label": "행사 장소", "value": "서울"}
+                ]
+            }
+        }
+    }
+
+
+class ScheduleItem(BaseModel):
+    """일정 항목"""
+    title: str
+    startDate: str
+    endDate: str
+    color: str
+
+
+class EventPlanResponse(BaseModel):
+    """행사 기획 응답 모델"""
+    success: bool
+    event_name: Optional[str] = None
+    schedules: Optional[list[ScheduleItem]] = None
+    raw_response: Optional[str] = None
+    error: Optional[str] = None
 
 
 # ============================================
@@ -253,6 +302,99 @@ async def chat_with_fallback(request: ChatRequest):
         return ChatResponse(
             success=False,
             response="",
+            error=str(e)
+        )
+
+
+@app.post("/plan-event", response_model=EventPlanResponse)
+async def plan_event(request: EventPlanRequest):
+    """
+    행사 정보를 받아 체계적인 준비 일정을 자동 생성합니다.
+    MockData를 기반으로 D-Day 역산 일정을 생성합니다.
+    """
+    import re
+    from datetime import datetime, timedelta
+
+    try:
+        # 행사 정보에서 필요한 데이터 추출
+        event_name = ""
+        event_date_str = ""
+
+        for item in request.event_info:
+            if item.label == "행사명":
+                event_name = item.value
+            elif item.label == "행사 일정":
+                event_date_str = item.value
+
+        # 날짜 파싱 (다양한 형식 지원)
+        event_date = None
+
+        # "2024년 12월 28일" 형식
+        date_match = re.search(r'(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일', event_date_str)
+        if date_match:
+            year, month, day = map(int, date_match.groups())
+            event_date = datetime(year, month, day)
+
+        # "2024-12-28" 형식
+        if not event_date:
+            date_match = re.search(r'(\d{4})-(\d{1,2})-(\d{1,2})', event_date_str)
+            if date_match:
+                year, month, day = map(int, date_match.groups())
+                event_date = datetime(year, month, day)
+
+        # 날짜를 찾지 못한 경우 오늘 + 30일
+        if not event_date:
+            event_date = datetime.now() + timedelta(days=30)
+
+        # D-Day 기준 준비 일정 생성
+        preparation_tasks = [
+            {"title": "행사 기획서 확정", "days_before": 30, "duration": 3, "color": "purple"},
+            {"title": "예산 확보 및 승인", "days_before": 28, "duration": 5, "color": "blue"},
+            {"title": "장소 섭외 및 계약", "days_before": 21, "duration": 3, "color": "blue"},
+            {"title": "협력업체 선정", "days_before": 18, "duration": 4, "color": "green"},
+            {"title": "홍보물 제작", "days_before": 14, "duration": 5, "color": "orange"},
+            {"title": "참가자 모집", "days_before": 14, "duration": 10, "color": "green"},
+            {"title": "비품 준비", "days_before": 7, "duration": 3, "color": "yellow"},
+            {"title": "리허설 계획 수립", "days_before": 5, "duration": 2, "color": "orange"},
+            {"title": "최종 점검", "days_before": 3, "duration": 2, "color": "red"},
+            {"title": "참가자 안내 발송", "days_before": 3, "duration": 1, "color": "blue"},
+            {"title": "현장 세팅", "days_before": 1, "duration": 1, "color": "orange"},
+            {"title": "리허설", "days_before": 1, "duration": 1, "color": "purple"},
+        ]
+
+        schedules = []
+
+        for task in preparation_tasks:
+            start = event_date - timedelta(days=task["days_before"])
+            end = start + timedelta(days=task["duration"] - 1)
+
+            schedules.append(ScheduleItem(
+                title=task["title"],
+                startDate=start.strftime("%Y-%m-%d"),
+                endDate=end.strftime("%Y-%m-%d"),
+                color=task["color"]
+            ))
+
+        # D-Day 이벤트 추가
+        schedules.append(ScheduleItem(
+            title=f"[D-Day] {event_name}",
+            startDate=event_date.strftime("%Y-%m-%d"),
+            endDate=event_date.strftime("%Y-%m-%d"),
+            color="red"
+        ))
+
+        # 시작일 기준 정렬
+        schedules.sort(key=lambda x: x.startDate)
+
+        return EventPlanResponse(
+            success=True,
+            event_name=event_name,
+            schedules=schedules
+        )
+
+    except Exception as e:
+        return EventPlanResponse(
+            success=False,
             error=str(e)
         )
 
