@@ -3,7 +3,12 @@
     "allow": [
       "Bash(xcodebuild:*)",
       "mcp__context7__resolve-library-id",
-      "mcp__context7__get-library-docs"
+      "mcp__context7__get-library-docs",
+      "Bash(ipconfig getifaddr:*)",
+      "Bash(curl:*)",
+      "Bash(networksetup:*)",
+      "Bash(brew install:*)",
+      "Bash(python3:*)"
     ]
   }
 }
