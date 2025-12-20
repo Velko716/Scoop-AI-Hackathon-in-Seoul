@@ -41,7 +41,7 @@ struct FormTextField: View {
                 .font(.pretendard(type: .medium, size: 15))
                 .foregroundStyle(Color.grayscaleBlack)
                 .padding(.horizontal, 10)
-                .padding(.vertical, 12)
+                .frame(height: 44)
                 .background(Color.grayscaleWhite)
                 .clipShape(RoundedRectangle(cornerRadius: 15))
                 .overlay(
@@ -109,7 +109,7 @@ struct DatePickerButton: View {
                 .font(.pretendard(type: .medium, size: 15))
                 .foregroundStyle(Color.grayscale100)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+                .frame(height: 44)
                 .background(Color.grayscaleWhite)
                 .clipShape(RoundedRectangle(cornerRadius: 15))
                 .overlay(

@@ -370,7 +370,7 @@ final class DashboardViewModel {
         }
 
         selectTodaysEventIfExists()
-        loadMockTasksForEvents()
+        loadTasksForEvents()
     }
 
     private func selectTodaysEventIfExists() {
@@ -380,6 +380,18 @@ final class DashboardViewModel {
             selectedEventID = todayEvent.id
         } else if let firstEvent = events.first {
             selectedEventID = firstEvent.id
+        }
+    }
+
+    /// 이벤트에 대한 체크리스트 로드
+    /// - 서버에서 받은 todos가 있으면 사용, 없으면 템플릿 기반 생성
+    private func loadTasksForEvents() {
+        // 서버에서 받은 todos가 있으면 사용
+        if dataStore.hasTodos {
+            allTasks = dataStore.allTodoTasks(for: events)
+        } else {
+            // 서버 데이터가 없으면 템플릿 기반으로 생성 (레거시 호환)
+            loadMockTasksForEvents()
         }
     }
 

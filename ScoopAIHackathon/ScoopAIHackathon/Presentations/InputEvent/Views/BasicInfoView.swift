@@ -59,6 +59,9 @@ struct BasicInfoView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 40)
                 }
+                .onTapGesture {
+                    hideKeyboard()
+                }
             }
         }
     }

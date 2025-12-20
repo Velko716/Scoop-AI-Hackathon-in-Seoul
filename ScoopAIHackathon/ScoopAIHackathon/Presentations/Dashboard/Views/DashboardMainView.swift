@@ -25,6 +25,9 @@ struct DashboardMainView: View {
                 checklistSection
             }
         }
+        .onTapGesture {
+            hideKeyboard()
+        }
         .background(DashboardColors.backgroundNormal)
     }
 }
