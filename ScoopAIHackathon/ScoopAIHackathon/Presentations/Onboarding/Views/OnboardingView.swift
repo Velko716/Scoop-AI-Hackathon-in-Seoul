@@ -12,37 +12,31 @@ struct OnboardingView: View {
 
     // MARK: - Properties
 
-    @State private var showInputEvent = false
+    var onComplete: (() -> Void)?
 
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                // Background
-                Color.primary50
-                    .ignoresSafeArea()
+        ZStack {
+            // Background
+            Color.primary50
+                .ignoresSafeArea()
 
-                VStack(alignment: .leading, spacing: 0) {
-                    Spacer()
+            VStack(alignment: .leading, spacing: 0) {
+                Spacer()
 
-                    // Main Title
-                    titleSection
-                        .padding(.horizontal, 16)
-
-                    Spacer()
-
-                    // Start Button
-                    ActionButton(title: "시작하기") {
-                        showInputEvent = true
-                    }
+                // Main Title
+                titleSection
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 16)
+
+                Spacer()
+
+                // Start Button
+                ActionButton(title: "시작하기") {
+                    onComplete?()
                 }
-            }
-            .navigationBarHidden(true)
-            .navigationDestination(isPresented: $showInputEvent) {
-                InputEventView()
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
             }
         }
     }
@@ -76,5 +70,5 @@ private extension OnboardingView {
 // MARK: - Preview
 
 #Preview {
-    OnboardingView()
+    OnboardingView(onComplete: {})
 }

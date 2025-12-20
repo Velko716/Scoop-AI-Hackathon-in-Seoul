@@ -7,56 +7,28 @@
 
 import Foundation
 
-// MARK: - Main Response
+// MARK: - Main Response (백엔드 /plan-event 응답)
 struct EventPlanResponse: Codable {
-    let eventSummary: EventSummary
-    let schedules: [Schedule]
-    let dailyChecklists: [DailyChecklist]
+    let success: Bool
+    let eventName: String?
+    let schedules: [ScheduleItem]?
+    let rawResponse: String?
+    let error: String?
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case eventName = "event_name"
+        case schedules
+        case rawResponse = "raw_response"
+        case error
+    }
 }
 
-// MARK: - Event Summary
-struct EventSummary: Codable {
-    let name: String
-    let period: String
-    let totalDays: Int
-    let prepDays: Int
-}
-
-// MARK: - Schedule
-struct Schedule: Codable, Identifiable {
-    let id: String
-    let date: String
-    let startTime: String
-    let endTime: String
+// MARK: - Schedule Item (일정 항목)
+struct ScheduleItem: Codable, Identifiable {
+    var id: String { "\(title)-\(startDate)" }
     let title: String
-    let description: String
-    let phase: Phase
-    let category: Category
-    let location: String
+    let startDate: String
+    let endDate: String
+    let color: String
 }
-
-// MARK: - Daily Checklist
-struct DailyChecklist: Codable, Identifiable {
-    var id: String { date }
-    let date: String
-    let dDay: String
-    let tasksByCategory: TasksByCategory
-}
-
-// MARK: - Tasks By Category
-struct TasksByCategory: Codable {
-    let planning: [ChecklistTask]
-    let finance: [ChecklistTask]
-    let facilities: [ChecklistTask]
-    let promotion: [ChecklistTask]
-    let operations: [ChecklistTask]
-}
-
-// MARK: - Checklist Task
-struct ChecklistTask: Codable, Identifiable {
-    let id: String
-    let task: String
-    let priority: Priority
-    let estimatedTime: String
-}
-

@@ -158,9 +158,9 @@ class SpoonAgentService {
         }
     }
 
-    /// 행사 계획 생성
+    /// 행사 계획 생성 (/plan-event 엔드포인트 호출)
     func generateEventPlan(request: EventPlanRequest) async -> Result<EventPlanResponse, SpoonAgentError> {
-        guard let url = URL(string: "\(baseURL)/chat") else {
+        guard let url = URL(string: "\(baseURL)/plan-event") else {
             return .failure(.invalidURL)
         }
 
@@ -175,19 +175,23 @@ class SpoonAgentService {
             }
         }
 
-        // 프롬프트 생성
-        let prompt = request.generatePrompt()
+        // EventPlanRequest를 EventInfoItem 배열로 변환
+        let eventInfo = buildEventInfoItems(from: request)
+
+        // API 요청 바디 생성
+        struct PlanEventRequestBody: Codable {
+            let event_info: [EventInfoItem]
+        }
+        let requestBody = PlanEventRequestBody(event_info: eventInfo)
 
         // 요청 생성
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.timeoutInterval = 120 // AI 응답 대기 시간 증가
-
-        let chatRequest = ChatRequest(message: prompt)
+        urlRequest.timeoutInterval = 120
 
         do {
-            urlRequest.httpBody = try JSONEncoder().encode(chatRequest)
+            urlRequest.httpBody = try JSONEncoder().encode(requestBody)
         } catch {
             return .failure(.decodingError(error))
         }
@@ -196,32 +200,24 @@ class SpoonAgentService {
         do {
             let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
-            // HTTP 상태 코드 확인
             if let httpResponse = response as? HTTPURLResponse,
                httpResponse.statusCode != 200 {
                 return .failure(.serverError("HTTP \(httpResponse.statusCode)"))
             }
 
-            // ChatResponse 파싱
-            let chatResponse = try JSONDecoder().decode(ChatResponse.self, from: data)
+            // 직접 EventPlanResponse로 디코딩
+            let eventPlanResponse = try JSONDecoder().decode(EventPlanResponse.self, from: data)
 
-            guard chatResponse.success else {
-                let errorMsg = chatResponse.error ?? "알 수 없는 오류"
+            if !eventPlanResponse.success {
+                let errorMsg = eventPlanResponse.error ?? "알 수 없는 오류"
                 await MainActor.run {
                     self.errorMessage = errorMsg
                 }
                 return .failure(.serverError(errorMsg))
             }
 
-            // AI 응답에서 JSON 추출 및 파싱
-            let eventPlanResponse = try parseEventPlanResponse(from: chatResponse.response)
             return .success(eventPlanResponse)
 
-        } catch let error as SpoonAgentError {
-            await MainActor.run {
-                self.errorMessage = error.localizedDescription
-            }
-            return .failure(error)
         } catch let error as DecodingError {
             await MainActor.run {
                 self.errorMessage = error.localizedDescription
@@ -237,36 +233,29 @@ class SpoonAgentService {
 
     // MARK: - Private Methods
 
-    /// AI 응답에서 JSON을 추출하여 EventPlanResponse로 파싱
-    private func parseEventPlanResponse(from response: String) throws -> EventPlanResponse {
-        // JSON 블록 추출 (```json ... ``` 또는 순수 JSON)
-        var jsonString = response
+    /// EventPlanRequest를 EventInfoItem 배열로 변환
+    private func buildEventInfoItems(from request: EventPlanRequest) -> [EventInfoItem] {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy년 M월 d일"
+        dateFormatter.locale = Locale(identifier: "ko_KR")
 
-        // ```json ... ``` 패턴 제거
-        if let jsonStart = response.range(of: "```json"),
-           let jsonEnd = response.range(of: "```", range: jsonStart.upperBound..<response.endIndex) {
-            jsonString = String(response[jsonStart.upperBound..<jsonEnd.lowerBound])
-        } else if let jsonStart = response.range(of: "```"),
-                  let jsonEnd = response.range(of: "```", range: jsonStart.upperBound..<response.endIndex) {
-            jsonString = String(response[jsonStart.upperBound..<jsonEnd.lowerBound])
+        var items: [EventInfoItem] = []
+
+        items.append(EventInfoItem(label: "행사명", value: request.eventName))
+        items.append(EventInfoItem(label: "행사 일정", value: dateFormatter.string(from: request.startDate)))
+        items.append(EventInfoItem(label: "행사 장소", value: request.eventLocation))
+
+        if let budget = request.budget {
+            items.append(EventInfoItem(label: "행사 예산", value: "\(budget)원"))
         }
 
-        // { 로 시작하는 JSON 찾기
-        if let braceStart = jsonString.firstIndex(of: "{"),
-           let braceEnd = jsonString.lastIndex(of: "}") {
-            jsonString = String(jsonString[braceStart...braceEnd])
-        }
+        items.append(EventInfoItem(label: "행사 대상", value: request.targetAudience))
+        items.append(EventInfoItem(label: "행사 인원", value: "\(request.participantCount)명"))
+        items.append(EventInfoItem(label: "행사 종류", value: request.eventType.displayName))
+        items.append(EventInfoItem(label: "행사 취지", value: request.eventOverview))
+        items.append(EventInfoItem(label: "행사 내용", value: request.eventContent))
 
-        guard let jsonData = jsonString.data(using: .utf8) else {
-            throw SpoonAgentError.serverError("JSON 데이터 변환 실패")
-        }
-
-        do {
-            let decoder = JSONDecoder()
-            return try decoder.decode(EventPlanResponse.self, from: jsonData)
-        } catch {
-            throw SpoonAgentError.decodingError(error)
-        }
+        return items
     }
 }
 

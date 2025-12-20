@@ -63,11 +63,13 @@ final class InputEventViewModel {
     // MARK: - Dependencies
 
     private let service: SpoonAgentService
+    private let dataStore: EventDataStore
 
     // MARK: - Initialization
 
-    init(service: SpoonAgentService = .shared) {
+    init(service: SpoonAgentService = .shared, dataStore: EventDataStore = .shared) {
         self.service = service
+        self.dataStore = dataStore
     }
 
     // MARK: - Step Validation
@@ -184,6 +186,7 @@ final class InputEventViewModel {
         switch result {
         case .success(let response):
             eventPlanResponse = response
+            dataStore.saveResponse(response)  // 스토어에 저장하여 캘린더에서 사용
             showResult = true
         case .failure(let error):
             errorMessage = error.localizedDescription
