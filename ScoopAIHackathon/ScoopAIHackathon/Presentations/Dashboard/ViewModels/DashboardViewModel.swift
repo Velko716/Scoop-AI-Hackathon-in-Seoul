@@ -318,16 +318,41 @@ final class DashboardViewModel {
     func moveTasks(from source: IndexSet, to destination: Int) {
         guard let eventId = selectedEventID else { return }
 
+        // filteredTasks와 동일한 정렬 기준 사용
         var tasksForEvent = allTasks
             .filter { $0.eventId == eventId }
-            .sorted { $0.sortOrder < $1.sortOrder }
+            .sorted { task1, task2 in
+                if task1.isCompleted != task2.isCompleted {
+                    return !task1.isCompleted
+                }
+                return task1.sortOrder < task2.sortOrder
+            }
 
         tasksForEvent.move(fromOffsets: source, toOffset: destination)
 
-        for (newIndex, task) in tasksForEvent.enumerated() {
-            if let globalIndex = allTasks.firstIndex(where: { $0.id == task.id }) {
-                allTasks[globalIndex].sortOrder = newIndex
+        // 새 sortOrder 매핑 생성
+        var newSortOrders: [UUID: Int] = [:]
+        var incompleteOrder = 0
+        var completeOrder = 1000
+
+        for task in tasksForEvent {
+            if task.isCompleted {
+                newSortOrders[task.id] = completeOrder
+                completeOrder += 1
+            } else {
+                newSortOrders[task.id] = incompleteOrder
+                incompleteOrder += 1
             }
+        }
+
+        // 배열 전체를 새로 생성하여 SwiftUI가 변경을 감지하도록 함
+        allTasks = allTasks.map { task in
+            if let newOrder = newSortOrders[task.id] {
+                var updatedTask = task
+                updatedTask.sortOrder = newOrder
+                return updatedTask
+            }
+            return task
         }
     }
 

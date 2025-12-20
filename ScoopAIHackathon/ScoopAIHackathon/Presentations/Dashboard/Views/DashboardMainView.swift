@@ -73,11 +73,10 @@ extension DashboardMainView {
 
             if viewModel.isChecklistExpanded {
                 IntegratedChecklistView(viewModel: viewModel)
-                    .frame(minHeight: 300)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .background(Color(.systemBackground))
+        .background(Color(.systemGroupedBackground))
     }
 }
 
