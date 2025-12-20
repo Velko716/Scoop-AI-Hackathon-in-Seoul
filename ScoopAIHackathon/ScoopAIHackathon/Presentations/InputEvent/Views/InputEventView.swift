@@ -16,6 +16,9 @@ struct InputEventView: View {
     @State private var viewModel = InputEventViewModel()
     @Environment(\.dismiss) private var dismiss
 
+    /// AI 응답 완료 후 호출되는 콜백
+    var onComplete: (() -> Void)?
+
     // MARK: - Body
 
     var body: some View {
@@ -26,7 +29,7 @@ struct InputEventView: View {
                     BasicInfoView(
                         viewModel: viewModel,
                         onNext: { viewModel.nextStep() },
-                        onBack: { viewModel.previousStep() },
+                        onBack: { viewModel.previousStep() }
                     )
 
                 case .participantInfo:
@@ -65,9 +68,9 @@ struct InputEventView: View {
             } message: {
                 Text(viewModel.errorMessage ?? "")
             }
-            .navigationDestination(isPresented: $viewModel.showResult) {
-                if let response = viewModel.eventPlanResponse {
-                    EmptyView()
+            .onChange(of: viewModel.showResult) { _, showResult in
+                if showResult {
+                    onComplete?()
                 }
             }
         }

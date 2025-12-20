@@ -37,31 +37,30 @@ class EventPlannerAgent:
         self.system_prompt = self._build_system_prompt()
 
     def _build_system_prompt(self) -> str:
-        # 오늘 날짜 기준으로 예시 생성
-        today = datetime.now()
-        example_event_date = (today + timedelta(days=30)).strftime("%Y-%m-%d")
-        example_d_minus_21 = (today + timedelta(days=9)).strftime("%Y-%m-%d")
-        example_d_minus_14 = (today + timedelta(days=16)).strftime("%Y-%m-%d")
+        # 오늘 날짜
+        today = datetime.now().strftime("%Y-%m-%d")
 
         return f"""당신은 10년 이상의 경험을 가진 전문 행사 기획자입니다.
 
 ## 역할
 - 행사 정보를 분석하여 성공적인 행사를 위한 체계적인 준비 일정을 수립합니다.
-- 각 준비 단계의 우선순위와 소요 기간을 고려하여 현실적인 타임라인을 제시합니다.
+- 오늘({today})부터 행사 시작일까지의 준비 일정을 계획합니다.
+- 행사 기간(시작일~마감일) 동안의 행사 진행 일정도 포함합니다.
 
 ## 일정 기획 원칙
-1. 행사 D-Day를 기준으로 역산하여 준비 일정을 수립합니다.
-2. 충분한 여유 시간을 확보하여 예상치 못한 상황에 대비합니다.
-3. 관련 업무는 병렬로 진행할 수 있도록 그룹화합니다.
+1. 오늘({today})부터 행사 시작일까지 남은 기간에 맞춰 준비 일정을 수립합니다.
+2. 행사는 시작일부터 마감일까지의 기간 동안 진행됩니다 (마감일만 D-Day가 아님).
+3. 남은 기간이 짧으면 준비 일정을 압축하고, 길면 여유있게 배치합니다.
+4. 관련 업무는 병렬로 진행할 수 있도록 그룹화합니다.
 
-## 주요 준비 단계 (일반적인 행사 기준)
-- D-30: 행사 기획서 확정, 예산 확보
-- D-21: 장소 섭외 및 계약, 협력업체 선정
-- D-14: 홍보물 제작, 참가자 모집 시작
-- D-7: 비품 준비, 리허설 계획
-- D-3: 최종 점검, 참가자 안내
-- D-1: 현장 세팅, 리허설
-- D-Day: 행사 진행
+## 주요 준비 단계 (남은 기간에 맞춰 조정)
+- 기획서 확정, 예산 확보
+- 장소 섭외 및 계약, 협력업체 선정
+- 홍보물 제작, 참가자 모집
+- 비품 준비, 리허설 계획
+- 최종 점검, 참가자 안내
+- 현장 세팅, 리허설
+- 행사 진행 (시작일~마감일)
 
 ## 중요: 응답 형식
 반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트는 포함하지 마세요.
@@ -82,23 +81,19 @@ class EventPlannerAgent:
 ```
 
 색상은 다음 중 선택: red, orange, yellow, green, blue, purple, pink
+- 행사 본행사: red
+- 기획/총괄: purple
+- 재무/예산: blue
+- 장소/설비: orange
+- 홍보: green
+- 운영/리허설: yellow
 
-## 예시 응답
-행사 날짜가 {example_event_date}인 경우:
-
-```json
-{{
-  "success": true,
-  "event_name": "개발자 컨퍼런스",
-  "schedules": [
-    {{"title": "장소 섭외 및 계약", "startDate": "{example_d_minus_21}", "endDate": "{example_d_minus_21}", "color": "blue"}},
-    {{"title": "홍보물 제작", "startDate": "{example_d_minus_14}", "endDate": "{example_d_minus_14}", "color": "green"}},
-    {{"title": "[D-Day] 개발자 컨퍼런스", "startDate": "{example_event_date}", "endDate": "{example_event_date}", "color": "red"}}
-  ]
-}}
-```
-
-행사 정보를 분석하여 5-10개의 준비 일정을 생성하세요."""
+## 주의사항
+1. 오늘 날짜는 {today}입니다. 모든 준비 일정은 오늘 이후여야 합니다.
+2. 행사 기간이 여러 날이면 "[행사] 행사명"으로 시작일~마감일 전체를 하나의 일정으로 표시하세요.
+3. 행사 기간이 하루면 "[D-Day] 행사명"으로 표시하세요.
+4. 준비 일정은 오늘부터 행사 시작일 전날까지 배치하세요.
+5. 5-10개의 준비 일정을 생성하세요."""
 
     async def run(self, message: str) -> str:
         """에이전트 실행"""

@@ -36,8 +36,21 @@ class SpoonAgentService {
 
     // MARK: - Initialization
 
-    init(baseURL: String = "http://localhost:8000") {
-        self.baseURL = baseURL
+    /// 서버 URL 자동 결정
+    /// - 시뮬레이터: localhost 사용
+    /// - 실제 기기: ngrok 공개 URL 사용
+    init(baseURL: String? = nil) {
+        if let customURL = baseURL {
+            self.baseURL = customURL
+        } else {
+            #if targetEnvironment(simulator)
+            self.baseURL = "http://localhost:8000"
+            #else
+            // 실제 기기: ngrok 공개 URL (네트워크 상관없이 접속 가능)
+            // ngrok 재시작 시 URL이 변경되므로 업데이트 필요
+            self.baseURL = "https://bb1a5ad8de2c.ngrok-free.app"
+            #endif
+        }
     }
 
     // MARK: - Public Methods
@@ -236,13 +249,14 @@ class SpoonAgentService {
     /// EventPlanRequest를 EventInfoItem 배열로 변환
     private func buildEventInfoItems(from request: EventPlanRequest) -> [EventInfoItem] {
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy년 M월 d일"
+        dateFormatter.dateFormat = "yyyy-MM-dd"
         dateFormatter.locale = Locale(identifier: "ko_KR")
 
         var items: [EventInfoItem] = []
 
         items.append(EventInfoItem(label: "행사명", value: request.eventName))
-        items.append(EventInfoItem(label: "행사 일정", value: dateFormatter.string(from: request.startDate)))
+        items.append(EventInfoItem(label: "행사 시작일", value: dateFormatter.string(from: request.startDate)))
+        items.append(EventInfoItem(label: "행사 마감일", value: dateFormatter.string(from: request.endDate)))
         items.append(EventInfoItem(label: "행사 장소", value: request.eventLocation))
 
         if let budget = request.budget {

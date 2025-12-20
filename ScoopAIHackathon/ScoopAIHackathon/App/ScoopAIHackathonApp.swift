@@ -9,7 +9,7 @@ import SwiftUI
 
 @main
 struct ScoopAIHackathonApp: App {
-    @State private var hasCompletedOnboarding = false
+    @State private var appFlow: AppFlow = .onboarding
 
     var body: some Scene {
         WindowGroup {
@@ -21,71 +21,59 @@ struct ScoopAIHackathonApp: App {
                 }
             } else {
                 OnboardingView(onComplete: {
-                    hasCompletedOnboarding = true
+                    withAnimation {
+                        appFlow = .inputEvent
+                    }
+                })
+
+            case .inputEvent:
+                InputEventView(onComplete: {
+                    withAnimation {
+                        appFlow = .calendar
+                    }
+                })
+
+            case .calendar:
+                CalendarMainView(onNewEvent: {
+                    withAnimation {
+                        appFlow = .inputEvent
+                    }
                 })
             }
         }
     }
 }
 
-// MARK: - Main Tab View
-struct MainTabView: View {
-    @State private var selectedTab: Tab = .input
-    private let dataStore = EventDataStore.shared
+// MARK: - App Flow State
 
-    enum Tab: String, CaseIterable {
-        case input = "행사 입력"
-        case calendar = "캘린더"
-        case checklist = "체크리스트"
+enum AppFlow {
+    case onboarding
+    case inputEvent
+    case calendar
+}
 
-        var icon: String {
-            switch self {
-            case .input: return "plus.circle.fill"
-            case .calendar: return "calendar"
-            case .checklist: return "checklist"
-            }
-        }
-    }
+// MARK: - Calendar Main View (Wrapper)
+
+struct CalendarMainView: View {
+    var onNewEvent: (() -> Void)?
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            ForEach(Tab.allCases, id: \.self) { tab in
-                tabContent(for: tab)
-                    .tabItem {
-                        Label(tab.rawValue, systemImage: tab.icon)
+        NavigationStack {
+            EventCalendarView()
+                .navigationTitle("일정 캘린더")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            // 데이터 초기화 후 새 행사 입력
+                            EventDataStore.shared.reset()
+                            onNewEvent?()
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title3)
+                        }
                     }
-                    .tag(tab)
-            }
-        }
-        .onChange(of: dataStore.shouldNavigateToCalendar) { _, shouldNavigate in
-            if shouldNavigate {
-                selectedTab = .calendar
-                dataStore.shouldNavigateToCalendar = false
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func tabContent(for tab: Tab) -> some View {
-        switch tab {
-        case .input:
-            NavigationStack {
-                InputEventView()
-                    .navigationTitle("행사 입력")
-                    .navigationBarTitleDisplayMode(.inline)
-            }
-        case .calendar:
-            NavigationStack {
-                EventCalendarView()
-                    .navigationTitle("일정 캘린더")
-                    .navigationBarTitleDisplayMode(.inline)
-            }
-        case .checklist:
-            NavigationStack {
-                PriorityChecklistView()
-                    .navigationTitle("체크리스트")
-                    .navigationBarTitleDisplayMode(.inline)
-            }
+                }
         }
     }
 }
