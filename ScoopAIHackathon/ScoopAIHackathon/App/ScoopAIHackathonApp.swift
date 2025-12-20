@@ -14,7 +14,11 @@ struct ScoopAIHackathonApp: App {
     var body: some Scene {
         WindowGroup {
             if hasCompletedOnboarding {
-                MainTabView()
+                NavigationStack {
+                    DashboardMainView()
+                        .navigationTitle("대시보드")
+                        .navigationBarTitleDisplayMode(.inline)
+                }
             } else {
                 OnboardingView(onComplete: {
                     hasCompletedOnboarding = true

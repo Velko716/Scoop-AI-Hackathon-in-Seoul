@@ -3,7 +3,13 @@
     "allow": [
       "Bash(xcodebuild:*)",
       "mcp__context7__resolve-library-id",
-      "mcp__context7__get-library-docs"
+      "mcp__context7__get-library-docs",
+      "Bash(gh issue create:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(mcp__context7__resolve-library-id:*)",
+      "mcp__figma-desktop__get_design_context",
+      "mcp__figma-desktop__get_screenshot"
     ]
   }
 }
