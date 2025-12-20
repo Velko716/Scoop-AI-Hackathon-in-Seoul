@@ -298,7 +298,7 @@ async def chat_with_fallback(request: ChatRequest):
 async def plan_event(request: EventPlanRequest):
     """
     행사 정보를 받아 체계적인 준비 일정을 자동 생성합니다.
-    MockData를 기반으로 D-Day 역산 일정을 생성합니다.
+    오늘부터 행사 시작일까지의 준비 일정을 동적으로 생성합니다.
     """
     import re
     from datetime import datetime, timedelta
@@ -306,70 +306,112 @@ async def plan_event(request: EventPlanRequest):
     try:
         # 행사 정보에서 필요한 데이터 추출
         event_name = ""
-        event_date_str = ""
+        start_date_str = ""
+        end_date_str = ""
 
         for item in request.event_info:
             if item.label == "행사명":
                 event_name = item.value
-            elif item.label == "행사 일정":
-                event_date_str = item.value
+            elif item.label == "행사 시작일":
+                start_date_str = item.value
+            elif item.label == "행사 마감일":
+                end_date_str = item.value
 
-        # 날짜 파싱 (다양한 형식 지원)
-        event_date = None
+        def parse_date(date_str: str) -> datetime | None:
+            """다양한 형식의 날짜 문자열을 파싱"""
+            if not date_str:
+                return None
 
-        # "2024년 12월 28일" 형식
-        date_match = re.search(r'(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일', event_date_str)
-        if date_match:
-            year, month, day = map(int, date_match.groups())
-            event_date = datetime(year, month, day)
+            # "2024년 12월 28일" 형식
+            match = re.search(r'(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일', date_str)
+            if match:
+                year, month, day = map(int, match.groups())
+                return datetime(year, month, day)
 
-        # "2024-12-28" 형식
-        if not event_date:
-            date_match = re.search(r'(\d{4})-(\d{1,2})-(\d{1,2})', event_date_str)
-            if date_match:
-                year, month, day = map(int, date_match.groups())
-                event_date = datetime(year, month, day)
+            # "2024-12-28" 형식
+            match = re.search(r'(\d{4})-(\d{1,2})-(\d{1,2})', date_str)
+            if match:
+                year, month, day = map(int, match.groups())
+                return datetime(year, month, day)
 
-        # 날짜를 찾지 못한 경우 오늘 + 30일
-        if not event_date:
-            event_date = datetime.now() + timedelta(days=30)
+            return None
 
-        # D-Day 기준 준비 일정 생성
-        preparation_tasks = [
-            {"title": "행사 기획서 확정", "days_before": 30, "duration": 3, "color": "purple"},
-            {"title": "예산 확보 및 승인", "days_before": 28, "duration": 5, "color": "blue"},
-            {"title": "장소 섭외 및 계약", "days_before": 21, "duration": 3, "color": "blue"},
-            {"title": "협력업체 선정", "days_before": 18, "duration": 4, "color": "green"},
-            {"title": "홍보물 제작", "days_before": 14, "duration": 5, "color": "orange"},
-            {"title": "참가자 모집", "days_before": 14, "duration": 10, "color": "green"},
-            {"title": "비품 준비", "days_before": 7, "duration": 3, "color": "yellow"},
-            {"title": "리허설 계획 수립", "days_before": 5, "duration": 2, "color": "orange"},
-            {"title": "최종 점검", "days_before": 3, "duration": 2, "color": "red"},
-            {"title": "참가자 안내 발송", "days_before": 3, "duration": 1, "color": "blue"},
-            {"title": "현장 세팅", "days_before": 1, "duration": 1, "color": "orange"},
-            {"title": "리허설", "days_before": 1, "duration": 1, "color": "purple"},
+        # 날짜 파싱
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        event_start = parse_date(start_date_str)
+        event_end = parse_date(end_date_str)
+
+        # 날짜를 찾지 못한 경우 기본값 설정
+        if not event_start:
+            event_start = today + timedelta(days=30)
+        if not event_end:
+            event_end = event_start
+
+        # 오늘부터 행사 시작일까지 남은 일수 계산
+        days_until_event = (event_start - today).days
+        if days_until_event < 1:
+            days_until_event = 1  # 최소 1일
+
+        # 준비 일정 템플릿 (30일 기준, 비율로 조정됨)
+        preparation_templates = [
+            {"title": "행사 기획서 확정", "ratio": 1.0, "duration_ratio": 0.1, "color": "purple"},
+            {"title": "예산 확보 및 승인", "ratio": 0.93, "duration_ratio": 0.17, "color": "blue"},
+            {"title": "장소 섭외 및 계약", "ratio": 0.7, "duration_ratio": 0.1, "color": "blue"},
+            {"title": "협력업체 선정", "ratio": 0.6, "duration_ratio": 0.13, "color": "green"},
+            {"title": "홍보물 제작", "ratio": 0.47, "duration_ratio": 0.17, "color": "orange"},
+            {"title": "참가자 모집", "ratio": 0.47, "duration_ratio": 0.33, "color": "green"},
+            {"title": "비품 준비", "ratio": 0.23, "duration_ratio": 0.1, "color": "yellow"},
+            {"title": "리허설 계획 수립", "ratio": 0.17, "duration_ratio": 0.07, "color": "orange"},
+            {"title": "최종 점검", "ratio": 0.1, "duration_ratio": 0.07, "color": "red"},
+            {"title": "참가자 안내 발송", "ratio": 0.1, "duration_ratio": 0.03, "color": "blue"},
+            {"title": "현장 세팅", "ratio": 0.03, "duration_ratio": 0.03, "color": "orange"},
+            {"title": "리허설", "ratio": 0.03, "duration_ratio": 0.03, "color": "purple"},
         ]
 
         schedules = []
 
-        for task in preparation_tasks:
-            start = event_date - timedelta(days=task["days_before"])
-            end = start + timedelta(days=task["duration"] - 1)
+        for template in preparation_templates:
+            # 비율에 따라 일수 계산
+            days_before = max(1, int(days_until_event * template["ratio"]))
+            duration = max(1, int(days_until_event * template["duration_ratio"]))
+
+            start = event_start - timedelta(days=days_before)
+            end = start + timedelta(days=duration - 1)
+
+            # 오늘 이전 날짜는 오늘로 조정
+            if start < today:
+                start = today
+            if end < start:
+                end = start
+
+            # 행사 시작일 이후는 제외
+            if start >= event_start:
+                continue
 
             schedules.append(ScheduleItem(
-                title=task["title"],
+                title=template["title"],
                 startDate=start.strftime("%Y-%m-%d"),
                 endDate=end.strftime("%Y-%m-%d"),
-                color=task["color"]
+                color=template["color"]
             ))
 
-        # D-Day 이벤트 추가
-        schedules.append(ScheduleItem(
-            title=f"[D-Day] {event_name}",
-            startDate=event_date.strftime("%Y-%m-%d"),
-            endDate=event_date.strftime("%Y-%m-%d"),
-            color="red"
-        ))
+        # 행사 일정 추가 (시작일 ~ 마감일)
+        if event_start == event_end:
+            # 단일일 행사
+            schedules.append(ScheduleItem(
+                title=f"[D-Day] {event_name}",
+                startDate=event_start.strftime("%Y-%m-%d"),
+                endDate=event_end.strftime("%Y-%m-%d"),
+                color="red"
+            ))
+        else:
+            # 다일 행사
+            schedules.append(ScheduleItem(
+                title=f"[행사] {event_name}",
+                startDate=event_start.strftime("%Y-%m-%d"),
+                endDate=event_end.strftime("%Y-%m-%d"),
+                color="red"
+            ))
 
         # 시작일 기준 정렬
         schedules.sort(key=lambda x: x.startDate)

@@ -66,14 +66,22 @@ struct DateFieldRow: View {
                 .foregroundStyle(Color.grayscaleBlack)
 
             HStack(spacing: 0) {
-                DatePickerButton(label: "시작일", date: $startDate)
+                // 시작일: 오늘 이후만 선택 가능
+                DatePickerButton(label: "시작일", date: $startDate, minimumDate: Date())
+                    .onChange(of: startDate) { _, newStartDate in
+                        // 시작일이 마감일보다 늦으면 마감일을 시작일로 맞춤
+                        if newStartDate > endDate {
+                            endDate = newStartDate
+                        }
+                    }
 
                 Text("—")
                     .font(.pretendard(type: .medium, size: 15))
                     .foregroundStyle(Color.grayscale100)
                     .frame(width: 20)
 
-                DatePickerButton(label: "마감일", date: $endDate)
+                // 마감일: 시작일 이후만 선택 가능
+                DatePickerButton(label: "마감일", date: $endDate, minimumDate: startDate)
             }
         }
     }
@@ -84,16 +92,13 @@ struct DateFieldRow: View {
 struct DatePickerButton: View {
     let label: String
     @Binding var date: Date
+    let minimumDate: Date
     @State private var showDatePicker = false
 
     private var dateFormatter: DateFormatter {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy.MM.dd"
         return formatter
-    }
-
-    private var hasSelectedDate: Bool {
-        true
     }
 
     var body: some View {
@@ -113,7 +118,7 @@ struct DatePickerButton: View {
                 )
         }
         .sheet(isPresented: $showDatePicker) {
-            DatePickerSheet(date: $date, label: label)
+            DatePickerSheet(date: $date, label: label, minimumDate: minimumDate)
                 .presentationDetents([.medium])
         }
     }
@@ -124,6 +129,7 @@ struct DatePickerButton: View {
 struct DatePickerSheet: View {
     @Binding var date: Date
     let label: String
+    let minimumDate: Date
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -131,6 +137,7 @@ struct DatePickerSheet: View {
             DatePicker(
                 label,
                 selection: $date,
+                in: minimumDate...,
                 displayedComponents: .date
             )
             .datePickerStyle(.graphical)
