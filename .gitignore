@@ -144,3 +144,7 @@ spoon-env/
 __pycache__/
 *.py[cod]
 .env
+
+# CodeTracker
+.codetracker/credentials.json
+.codetracker/cache/
