@@ -17,19 +17,15 @@ final class ChecklistViewModel {
 
     /// 복합 정렬된 태스크 목록
     /// 1. 미완료 항목이 완료 항목보다 위에 위치
-    /// 2. 미완료 항목 내에서는 우선순위순 정렬 (High → Medium → Low)
+    /// 2. sortOrder 순으로 정렬
     var sortedTasks: [TodoTask] {
         tasks.sorted { lhs, rhs in
             // 1. 상태 우선: 미완료가 위로
             if lhs.isCompleted != rhs.isCompleted {
                 return !lhs.isCompleted
             }
-            // 2. 우선순위 차선: 미완료 항목 내에서 우선순위순
-            if !lhs.isCompleted {
-                return lhs.priority.rawValue < rhs.priority.rawValue
-            }
-            // 완료된 항목들은 순서 유지
-            return false
+            // 2. sortOrder 순
+            return lhs.sortOrder < rhs.sortOrder
         }
     }
 
@@ -84,8 +80,9 @@ final class ChecklistViewModel {
     }
 
     /// 새 태스크 추가
-    func addTask(title: String, priority: Priority) {
-        let newTask = TodoTask(title: title, priority: priority)
+    func addTask(title: String) {
+        let maxOrder = tasks.map(\.sortOrder).max() ?? -1
+        let newTask = TodoTask(title: title, sortOrder: maxOrder + 1)
         tasks.append(newTask)
     }
 

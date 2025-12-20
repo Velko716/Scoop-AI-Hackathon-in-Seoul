@@ -17,9 +17,6 @@ struct TaskRowView: View {
             // 체크박스
             checkboxButton
 
-            // 우선순위 배지
-            priorityBadge
-
             // 태스크 제목
             taskTitle
 
@@ -47,18 +44,6 @@ struct TaskRowView: View {
         .sensoryFeedback(.selection, trigger: task.isCompleted)
     }
 
-    // MARK: - Priority Badge
-    private var priorityBadge: some View {
-        Text(task.priority.label)
-            .font(.pretendard(type: .semiBold, size: 10))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(task.priority.color.opacity(task.isCompleted ? 0.5 : 1.0))
-            .clipShape(Capsule())
-            .animation(.easeInOut(duration: 0.2), value: task.isCompleted)
-    }
-
     // MARK: - Task Title
     private var taskTitle: some View {
         Text(task.title)
@@ -71,30 +56,29 @@ struct TaskRowView: View {
     // MARK: - Accessibility
     private var accessibilityLabel: String {
         let status = task.isCompleted ? "완료됨" : "미완료"
-        let priority = task.priority.label
-        return "\(task.title), \(priority) 우선순위, \(status)"
+        return "\(task.title), \(status)"
     }
 }
 
 #Preview {
     VStack(spacing: 0) {
         TaskRowView(
-            task: TodoTask(title: "미완료 High 태스크", priority: .high),
+            task: TodoTask(title: "미완료 태스크 1", sortOrder: 0),
             onToggle: {}
         )
         Divider()
         TaskRowView(
-            task: TodoTask(title: "미완료 Medium 태스크", priority: .medium),
+            task: TodoTask(title: "미완료 태스크 2", sortOrder: 1),
             onToggle: {}
         )
         Divider()
         TaskRowView(
-            task: TodoTask(title: "미완료 Low 태스크", priority: .low),
+            task: TodoTask(title: "미완료 태스크 3", sortOrder: 2),
             onToggle: {}
         )
         Divider()
         TaskRowView(
-            task: TodoTask(title: "완료된 태스크", isCompleted: true, priority: .high),
+            task: TodoTask(title: "완료된 태스크", isCompleted: true, sortOrder: 3),
             onToggle: {}
         )
     }

@@ -13,8 +13,13 @@ struct ScoopAIHackathonApp: App {
 
     var body: some Scene {
         WindowGroup {
-            switch appFlow {
-            case .onboarding:
+            if hasCompletedOnboarding {
+                NavigationStack {
+                    DashboardMainView()
+                        .navigationTitle("대시보드")
+                        .navigationBarTitleDisplayMode(.inline)
+                }
+            } else {
                 OnboardingView(onComplete: {
                     withAnimation {
                         appFlow = .inputEvent
