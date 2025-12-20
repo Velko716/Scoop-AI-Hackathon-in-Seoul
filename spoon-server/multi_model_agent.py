@@ -29,11 +29,11 @@ class LLMProvider(str, Enum):
     ANTHROPIC = "anthropic"
 
 
-# 프로바이더별 추천 모델
+# 프로바이더별 추천 모델 (OpenRouter 모델명 형식)
 RECOMMENDED_MODELS = {
-    LLMProvider.GEMINI: "gemini-2.5-flash",
-    LLMProvider.OPENAI: "gpt-4o-mini",  # 비용 효율적
-    LLMProvider.ANTHROPIC: "claude-3-5-sonnet-20241022",
+    LLMProvider.GEMINI: "google/gemini-2.5-flash",
+    LLMProvider.OPENAI: "openai/gpt-4o-mini",
+    LLMProvider.ANTHROPIC: "anthropic/claude-3.5-sonnet",
 }
 
 # 프로바이더별 특화 용도
@@ -49,7 +49,7 @@ def create_chatbot(
     model: Optional[str] = None
 ) -> ChatBot:
     """
-    지정된 프로바이더로 ChatBot 생성
+    지정된 프로바이더로 ChatBot 생성 (OpenRouter 통합)
 
     Args:
         provider: LLM 프로바이더 (gemini, openai, anthropic)
@@ -60,9 +60,11 @@ def create_chatbot(
     """
     model_name = model or RECOMMENDED_MODELS.get(provider)
 
+    # OpenRouter를 통해 모든 프로바이더 접근
     return ChatBot(
-        llm_provider=provider.value,
-        model_name=model_name
+        llm_provider="openai",
+        model_name=model_name,
+        base_url="https://openrouter.ai/api/v1"
     )
 
 
@@ -211,16 +213,10 @@ class FallbackAgent:
         """현재 프로바이더로 에이전트 초기화"""
         provider = self.providers[self.current_index]
 
-        # API 키 확인
-        key_names = {
-            LLMProvider.GEMINI: "GEMINI_API_KEY",
-            LLMProvider.OPENAI: "OPENAI_API_KEY",
-            LLMProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
-        }
-
-        api_key = os.getenv(key_names[provider])
+        # OpenRouter API 키 확인 (모든 프로바이더 공통)
+        api_key = os.getenv("OPENAI_API_KEY")
         if not api_key or api_key.startswith("your_"):
-            print(f"⚠️ {provider.value} API 키가 설정되지 않음, 다음 프로바이더 시도...")
+            print(f"⚠️ OpenRouter API 키가 설정되지 않음")
             self._try_next_provider()
             return
 

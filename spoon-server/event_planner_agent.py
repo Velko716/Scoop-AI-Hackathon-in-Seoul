@@ -26,10 +26,11 @@ class EventPlannerAgent:
     description: str = "행사 정보를 분석하고 체계적인 일정을 기획하는 전문가 AI 에이전트입니다."
 
     def __init__(self, **kwargs):
-        # LLM 설정 (Gemini 사용)
+        # LLM 설정 (OpenRouter 사용)
         self.llm = ChatBot(
-            llm_provider="gemini",
-            model_name="gemini-2.5-flash"
+            llm_provider="openai",
+            model_name="google/gemini-2.5-flash",
+            base_url="https://openrouter.ai/api/v1"
         )
 
         # 시스템 프롬프트
