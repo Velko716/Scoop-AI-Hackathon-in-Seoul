@@ -18,7 +18,7 @@ struct DashboardCalendarView: View {
         }
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 15))
-        .shadow(color: Color(hex: "85909A").opacity(0.25), radius: 4, x: 0, y: 0)
+        .shadow(color: Color("Grayscale400").opacity(0.25), radius: 4, x: 0, y: 0)
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
     }
@@ -26,8 +26,8 @@ struct DashboardCalendarView: View {
 
 // MARK: - Calendar Colors
 private enum CalendarColors {
-    static let primaryStrong = Color(hex: "344BA5")       // 월 제목
-    static let primaryNormal = Color(hex: "3A53AF")       // 화살표
+    static let primaryStrong = Color("Primary600")        // 월 제목
+    static let primaryNormal = Color("Primary500")        // 화살표
 }
 
 // MARK: - Subviews
@@ -90,9 +90,9 @@ extension DashboardCalendarView {
 
     private func weekdayHeaderColor(for index: Int) -> Color {
         if index == 6 {
-            return Color(hex: "596CBA")  // Primary/Normal - 일요일
+            return Color("Primary500")  // 일요일
         }
-        return Color(hex: "1D1E23")  // Grayscale/Black
+        return Color("GrayscaleBlack")
     }
 }
 
@@ -181,7 +181,7 @@ struct DayNumberCell: View {
                     .frame(width: 28, height: 28)
                     .background(
                         Circle()
-                            .fill(isToday ? Color(hex: "344BA5") : Color.clear)
+                            .fill(isToday ? Color("Primary600") : Color.clear)
                     )
             }
             Spacer()
@@ -192,9 +192,9 @@ struct DayNumberCell: View {
     private var dayTextColor: Color {
         if isToday { return .white }
         if weekdayIndex == 6 {
-            return Color(hex: "596CBA")  // Primary/Normal - 일요일
+            return Color("Primary500")  // 일요일
         }
-        return Color(hex: "111111")
+        return Color("GrayscaleBlack")
     }
 }
 
@@ -213,11 +213,11 @@ struct ContinuousEventBar: View {
     private let topPadding: CGFloat = 24
 
     private var barColor: Color {
-        isSelected ? Color(hex: "7787C6") : Color(hex: "E8EAF5")  // Primary/Assistive : Primary/50
+        isSelected ? Color("Primary200") : Color("Primary50")
     }
 
     private var textColor: Color {
-        isSelected ? .white : Color(hex: "596CBA")  // White : Primary/Normal
+        isSelected ? .white : Color("Primary500")
     }
 
     private var startDayIndex: Int {

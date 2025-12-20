@@ -14,11 +14,14 @@ struct AskAISheetView: View {
     @State private var isLoading: Bool = false
     @State private var resultMessage: String?
     @State private var showSuccess: Bool = false
+    @State private var lastResponse: ScheduleModifyResponse?
     @FocusState private var isInputFocused: Bool
 
     private let agentService = SpoonAgentService.shared
+    var existingEvents: [CalendarEvent] = []
 
     var onScheduleChanged: ((ScheduleModifyResponse) -> Void)?
+    var onConfirmSchedule: (([ScheduleChangeItem]) -> Void)?
 
     var body: some View {
         ZStack {
@@ -26,14 +29,19 @@ struct AskAISheetView: View {
                 // Grabber & Header
                 headerSection
 
-                // Content Area - 항상 표시
-                contentSection
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                // Content Area - 성공 시 다른 화면 표시
+                if showSuccess, let response = lastResponse {
+                    successContentSection(response: response)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    contentSection
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
 
                 Spacer()
 
-                // Result Message
-                if let message = resultMessage {
+                // Error Message (에러일 때만 표시)
+                if !showSuccess, let message = resultMessage {
                     resultBanner(message: message)
                 }
 
@@ -145,6 +153,41 @@ struct AskAISheetView: View {
         .padding(.top, 24)
     }
 
+    // MARK: - Success Content Section
+    private func successContentSection(response: ScheduleModifyResponse) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // AI Icon
+            Image("ChatBotColorIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 68, height: 68)
+                .padding(.top, 60)
+
+            // Success Message
+            Text("변경된 일정을 반영해 전체 일정이 변경되었어요!")
+                .font(.pretendard(type: .semiBold, size: 20))
+                .foregroundStyle(Color("GrayscaleBlack"))
+                .tracking(-0.43)
+
+            // "일정 확인하러 가기" 버튼
+            Button(action: {
+                if let changes = response.changes {
+                    onConfirmSchedule?(changes)
+                }
+            }) {
+                Text("일정 확인하러 가기")
+                    .font(.pretendard(type: .medium, size: 15))
+                    .foregroundStyle(.white)
+                    .tracking(-0.43)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Color("Primary300"))
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+
     // MARK: - Input Section (iOS 26 Liquid Glass)
     private var inputSection: some View {
         HStack(spacing: 12) {
@@ -200,16 +243,27 @@ struct AskAISheetView: View {
             case .success(let response):
                 withAnimation(.easeInOut(duration: 0.3)) {
                     showSuccess = true
-                    resultMessage = response.message ?? "일정이 변경되었습니다!"
+                    lastResponse = response
+                    resultMessage = nil
                 }
                 onScheduleChanged?(response)
 
             case .failure(let error):
                 withAnimation(.easeInOut(duration: 0.3)) {
                     showSuccess = false
+                    lastResponse = nil
                     resultMessage = "오류: \(error.localizedDescription)"
                 }
             }
+        }
+    }
+
+    // MARK: - Reset State
+    private func resetState() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            showSuccess = false
+            lastResponse = nil
+            resultMessage = nil
         }
     }
 }

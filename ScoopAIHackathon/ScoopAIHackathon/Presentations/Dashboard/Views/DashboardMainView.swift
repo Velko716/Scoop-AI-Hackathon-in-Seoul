@@ -9,23 +9,81 @@ import SwiftUI
 
 // MARK: - Design Colors
 private enum DashboardColors {
-    static let backgroundNormal = Color(hex: "E8EAF5")    // Primary/50
-    static let labelAssistive = Color(hex: "1D1E23")      // Grayscale/Black
-    static let labelNormal = Color(hex: "6D758A")         // Grayscale/300
+    static let backgroundNormal = Color("Primary50")
+    static let labelAssistive = Color("GrayscaleBlack")
+    static let labelNormal = Color("Grayscale300")
 }
 
 struct DashboardMainView: View {
     @State private var viewModel = DashboardViewModel()
+    @State private var showChatbotSheet = false
+    @State private var showScheduleConfirmation = false
+    @State private var pendingChanges: [ScheduleChangeItem] = []
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                logoSection
-                calendarSection
-                checklistSection
+        NavigationStack {
+            ZStack(alignment: .bottomTrailing) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        logoSection
+                        calendarSection
+                        checklistSection
+                    }
+                }
+                .background(DashboardColors.backgroundNormal)
+
+                // 챗봇 FAB 버튼
+                chatbotButton
+            }
+            .navigationBarHidden(true)
+            .navigationDestination(isPresented: $showScheduleConfirmation) {
+                ScheduleConfirmationView(
+                    changes: pendingChanges,
+                    existingEvents: viewModel.events,
+                    onApply: {
+                        applyScheduleChanges()
+                    }
+                )
             }
         }
-        .background(DashboardColors.backgroundNormal)
+        .sheet(isPresented: $showChatbotSheet) {
+            AskAISheetView(
+                existingEvents: viewModel.events,
+                onConfirmSchedule: { changes in
+                    pendingChanges = changes
+                    showChatbotSheet = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        showScheduleConfirmation = true
+                    }
+                }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.hidden)
+        }
+    }
+
+    // MARK: - Apply Schedule Changes
+    private func applyScheduleChanges() {
+        // TODO: 실제 일정 변경 로직 구현
+        // viewModel에 새 이벤트 추가하는 로직
+    }
+
+    // MARK: - Chatbot FAB
+    private var chatbotButton: some View {
+        Button(action: {
+            showChatbotSheet = true
+        }) {
+            Image("ChatBotIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 33, height: 33)
+                .padding(13)
+                .background(Color("Primary500"))
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+        }
+        .padding(.trailing, 16)
+        .padding(.bottom, 24)
     }
 }
 
