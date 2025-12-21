@@ -48,7 +48,7 @@ struct BasicInfoView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         // Title
-                        Text("행사 종류를 선택해주세요")
+                        Text("행사의 기본 정보를 입력해주세요.")
                             .font(.pretendard(type: .semiBold, size: 24))
                             .foregroundStyle(Color.grayscaleBlack)
                             .padding(.top, 24)

@@ -44,7 +44,7 @@ struct EventTypeSelectionView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         // Title
-                        Text("행사 종류를 선택해주세요")
+                        Text("어떤 유형의 행사인가요?")
                             .font(.pretendard(type: .semiBold, size: 24))
                             .foregroundStyle(Color.grayscaleBlack)
                             .padding(.top, 24)
