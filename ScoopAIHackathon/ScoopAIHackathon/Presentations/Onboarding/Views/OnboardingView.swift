@@ -49,20 +49,20 @@ private extension OnboardingView {
     var titleSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Headline
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("행사 준비가")
-                    .font(.pretendard(type: .medium, size: 40))
+                    .font(.pretendard(type: .medium, size: 30))
                     .foregroundStyle(Color.grayscaleBlack)
 
                 Text("쉬워지는 순간")
-                    .font(.pretendard(type: .medium, size: 40))
+                    .font(.pretendard(type: .medium, size: 30))
                     .foregroundStyle(Color.grayscaleBlack)
             }
 
             // Logo
-            Text("LOGO")
-                .font(.pretendard(type: .semiBold, size: 40))
-                .foregroundStyle(Color.grayscaleBlack)
+            Image("Logo")
+                .resizable()
+                .frame(width: 250, height: 49)
         }
     }
 }
