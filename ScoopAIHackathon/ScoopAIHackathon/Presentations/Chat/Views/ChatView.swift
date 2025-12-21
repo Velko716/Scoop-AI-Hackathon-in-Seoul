@@ -87,6 +87,9 @@ struct ChatView: View {
                 }
                 .padding()
             }
+            .onTapGesture {
+                hideKeyboard()
+            }
             .onChange(of: messages.count) { _, _ in
                 if let lastMessage = messages.last {
                     withAnimation {

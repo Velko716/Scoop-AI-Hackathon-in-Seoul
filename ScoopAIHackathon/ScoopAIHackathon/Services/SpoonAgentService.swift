@@ -48,7 +48,7 @@ class SpoonAgentService {
             #else
             // 실제 기기: ngrok 공개 URL (네트워크 상관없이 접속 가능)
             // ngrok 재시작 시 URL이 변경되므로 업데이트 필요
-            self.baseURL = "https://bb1a5ad8de2c.ngrok-free.app"
+            self.baseURL = "https://23b6061cfa9b.ngrok-free.app"
             #endif
         }
     }

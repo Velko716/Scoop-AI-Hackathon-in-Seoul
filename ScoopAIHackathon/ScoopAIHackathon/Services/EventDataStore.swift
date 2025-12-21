@@ -62,9 +62,71 @@ final class EventDataStore {
         }
     }
 
+    /// EventPlanResponse의 todos를 TodoTask 배열로 변환 (우선순위 순)
+    /// - Parameter eventId: 연관된 CalendarEvent의 ID
+    /// - Returns: 우선순위 순으로 정렬된 TodoTask 배열
+    func todoTasks(for eventId: UUID, scheduleId: String) -> [TodoTask] {
+        guard let todos = eventPlanResponse?.todos else { return [] }
+
+        return todos
+            .filter { $0.scheduleId == scheduleId }
+            .sorted { $0.priority < $1.priority }
+            .enumerated()
+            .map { index, todo in
+                TodoTask(
+                    title: todo.title,
+                    isCompleted: false,
+                    eventId: eventId,
+                    sortOrder: index
+                )
+            }
+    }
+
+    /// 모든 todos를 CalendarEvent와 매핑하여 TodoTask 배열로 변환
+    func allTodoTasks(for events: [CalendarEvent]) -> [TodoTask] {
+        guard let todos = eventPlanResponse?.todos else { return [] }
+
+        var allTasks: [TodoTask] = []
+
+        for event in events {
+            let scheduleId = "\(event.title)-\(formatDateForScheduleId(event.startDate))"
+
+            let tasksForEvent = todos
+                .filter { $0.scheduleId == scheduleId }
+                .sorted { $0.priority < $1.priority }
+                .enumerated()
+                .map { index, todo in
+                    TodoTask(
+                        title: todo.title,
+                        isCompleted: false,
+                        eventId: event.id,
+                        sortOrder: index
+                    )
+                }
+
+            allTasks.append(contentsOf: tasksForEvent)
+        }
+
+        return allTasks
+    }
+
+    /// Date를 scheduleId 형식으로 변환
+    private func formatDateForScheduleId(_ date: Date) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        dateFormatter.locale = Locale(identifier: "ko_KR")
+        return dateFormatter.string(from: date)
+    }
+
     /// 행사명
     var eventName: String? {
         eventPlanResponse?.eventName
+    }
+
+    /// 서버에서 받은 todos가 있는지 확인
+    var hasTodos: Bool {
+        guard let todos = eventPlanResponse?.todos else { return false }
+        return !todos.isEmpty
     }
 
     // MARK: - Methods

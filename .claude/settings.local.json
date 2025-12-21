@@ -9,7 +9,12 @@
       "Bash(git checkout:*)",
       "Bash(mcp__context7__resolve-library-id:*)",
       "mcp__figma-desktop__get_design_context",
-      "mcp__figma-desktop__get_screenshot"
+      "mcp__figma-desktop__get_screenshot",
+      "Bash(pgrep:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(python3:*)",
+      "Bash(cat:*)"
     ]
   }
 }
