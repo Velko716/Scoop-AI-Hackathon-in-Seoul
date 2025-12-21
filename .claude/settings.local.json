@@ -14,7 +14,8 @@
       "Bash(curl:*)",
       "Bash(pkill:*)",
       "Bash(python3:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(find:*)"
     ]
   }
 }
