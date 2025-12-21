@@ -13,6 +13,7 @@ struct AskAISheetView: View {
     @State private var inputText: String = ""
     @State private var isLoading: Bool = false
     @State private var errorMessage: String?
+    @State private var pendingChanges: [ScheduleChangeItem]? = nil
     @FocusState private var isInputFocused: Bool
 
     private let agentService = SpoonAgentService.shared
@@ -25,9 +26,14 @@ struct AskAISheetView: View {
                 // Grabber & Header
                 headerSection
 
-                // Content
-                contentSection
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                // Content - 결과가 있으면 결과 화면, 없으면 기본 화면
+                if pendingChanges != nil {
+                    resultContentSection
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    contentSection
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
 
                 Spacer()
 
@@ -122,7 +128,7 @@ struct AskAISheetView: View {
         }
     }
 
-    // MARK: - Content Section
+    // MARK: - Content Section (초기 상태)
     private var contentSection: some View {
         VStack(alignment: .leading, spacing: 20) {
 
@@ -131,7 +137,7 @@ struct AskAISheetView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 68, height: 68)
-                .padding(.top, 110)
+                .padding(.top, 10)
 
             // Title
             Text("일정을 변경해 드릴게요")
@@ -147,6 +153,43 @@ struct AskAISheetView: View {
                 Text("예: \"내일 미팅 취소해줘\"")
                     .font(.pretendard(type: .medium, size: 14))
                     .foregroundStyle(Color("Grayscale300"))
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 24)
+    }
+
+    // MARK: - Result Content Section (결과 상태 - Figma 디자인)
+    private var resultContentSection: some View {
+        VStack(alignment: .leading, spacing: 20) {
+
+            // AI Icon
+            Image("ChatBotColorIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 68, height: 68)
+                .padding(.top, 10)
+
+            // Title - 변경 완료 메시지
+            Text("변경된 일정을 반영해 전체 일정이 변경되었어요!")
+                .font(.pretendard(type: .semiBold, size: 20))
+                .foregroundStyle(Color("GrayscaleBlack"))
+                .tracking(-0.43)
+
+            // 일정 확인하러 가기 버튼
+            Button(action: {
+                if let changes = pendingChanges {
+                    onConfirmSchedule?(changes)
+                }
+            }) {
+                Text("일정 확인하러 가기")
+                    .font(.pretendard(type: .medium, size: 15))
+                    .foregroundStyle(.white)
+                    .tracking(-0.43)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 5)
+                    .background(Color("Primary300"))
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
             }
         }
         .padding(.horizontal, 16)
@@ -206,9 +249,9 @@ struct AskAISheetView: View {
 
             switch result {
             case .success(let response):
-                // 일정 변경 → 바로 확인 화면으로 이동
+                // 일정 변경 → 결과 상태로 전환 (바로 이동하지 않음)
                 if let changes = response.changes, !changes.isEmpty {
-                    onConfirmSchedule?(changes)
+                    pendingChanges = changes
                 } else {
                     errorMessage = response.message ?? "일정 변경 정보를 찾을 수 없습니다."
                 }
