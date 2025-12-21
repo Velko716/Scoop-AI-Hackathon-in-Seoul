@@ -154,12 +154,11 @@ struct DashboardMainView: View {
 // MARK: - Logo Section
 extension DashboardMainView {
     private var logoSection: some View {
-        Text("LOGO")
-            .font(.pretendard(type: .semiBold, size: 24))
-            .foregroundStyle(DashboardColors.labelAssistive)
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 16)
+        Image("Logo")
+            .resizable()
+            .frame(width: 180, height: 40)
+            .padding(.horizontal, 15)
+            .padding(.vertical, 2)
     }
 }
 
@@ -170,7 +169,7 @@ extension DashboardMainView {
             // 섹션 헤더
             HStack {
                 Text("행사 일정")
-                    .font(.pretendard(type: .semiBold, size: 15))
+                    .font(.pretendard(type: .bold, size: 18))
                     .foregroundStyle(DashboardColors.labelAssistive)
 
                 Spacer()

@@ -49,7 +49,7 @@ struct EventDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         // Title
-                        Text("행사 종류를 선택해주세요")
+                        Text("행사의 목적은 무엇인가요?")
                             .font(.pretendard(type: .semiBold, size: 24))
                             .foregroundStyle(Color.grayscaleBlack)
                             .padding(.top, 24)
@@ -84,7 +84,7 @@ private extension EventDetailView {
             // 행사 취지 (작은 필드 - 85px)
             FormTextEditor(
                 label: "행사 취지",
-                placeholder: "예시) 쇼케이스",
+                placeholder: "예시) 제한된 시간 안에서 참가자들이 협업과 문제 해결을 경험하며효율적인 일정 운영과 실행 중심의 과정을 경험하는 것을 목표로 합니다.",
                 text: $viewModel.formData.detailInfo.eventOverview,
                 minHeight: 85
             )
@@ -92,7 +92,7 @@ private extension EventDetailView {
             // 행사 내용 (큰 필드 - 276px)
             FormTextEditor(
                 label: "행사 내용",
-                placeholder: "예시) 쇼케이스",
+                placeholder: "예시) 접수 및 오리엔테이션 후 팀 빌딩, 메인 활동, 중간 점검,결과 발표와 시상 순으로 진행되는 해커톤입니다.",
                 text: $viewModel.formData.detailInfo.eventContent,
                 minHeight: 276
             )
