@@ -447,6 +447,13 @@ async def plan_event(request: EventPlanRequest):
             if start >= event_start:
                 continue
 
+            # 오늘 이전 날짜는 스킵
+            if end < today:
+                continue
+            # 시작일이 오늘 이전이면 오늘로 조정
+            if start < today:
+                start = today
+
             schedules.append(ScheduleItem(
                 title=template["title"],
                 startDate=start.strftime("%Y-%m-%d"),
