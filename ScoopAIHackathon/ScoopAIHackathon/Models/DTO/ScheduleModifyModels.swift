@@ -40,10 +40,30 @@ struct CurrentScheduleItem: Codable {
 /// 일정 변경 응답
 struct ScheduleModifyResponse: Codable {
     let success: Bool
+    let responseType: String?  // "schedule" 또는 "chat"
     let action: String?
     let message: String?
     let changes: [ScheduleChangeItem]?
     let error: String?
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case responseType = "response_type"
+        case action
+        case message
+        case changes
+        case error
+    }
+
+    /// 일정 변경 응답인지 확인
+    var isScheduleResponse: Bool {
+        responseType == "schedule"
+    }
+
+    /// 채팅 응답인지 확인
+    var isChatResponse: Bool {
+        responseType == "chat"
+    }
 }
 
 /// 일정 변경 항목

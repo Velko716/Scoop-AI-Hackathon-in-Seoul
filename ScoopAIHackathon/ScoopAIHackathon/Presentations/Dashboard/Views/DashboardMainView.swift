@@ -64,8 +64,72 @@ struct DashboardMainView: View {
 
     // MARK: - Apply Schedule Changes
     private func applyScheduleChanges() {
-        // TODO: 실제 일정 변경 로직 구현
-        // viewModel에 새 이벤트 추가하는 로직
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+
+        var newEvents: [CalendarEvent] = []
+
+        for change in pendingChanges {
+            switch change.type {
+            case "add":
+                if let dateStr = change.newDate,
+                   let date = dateFormatter.date(from: dateStr) {
+                    let event = CalendarEvent(
+                        title: change.title ?? "새 일정",
+                        startDate: date,
+                        endDate: date,
+                        color: colorFromString(change.color)
+                    )
+                    newEvents.append(event)
+                }
+
+            case "modify":
+                // 기존 일정 찾아서 삭제 후 새로 추가
+                if let title = change.title,
+                   let existingEvent = viewModel.events.first(where: { $0.title == title }) {
+                    viewModel.removeEvent(id: existingEvent.id)
+                }
+                if let dateStr = change.newDate,
+                   let date = dateFormatter.date(from: dateStr) {
+                    let event = CalendarEvent(
+                        title: change.title ?? "수정된 일정",
+                        startDate: date,
+                        endDate: date,
+                        color: colorFromString(change.color)
+                    )
+                    newEvents.append(event)
+                }
+
+            case "delete":
+                if let title = change.title,
+                   let existingEvent = viewModel.events.first(where: { $0.title == title }) {
+                    viewModel.removeEvent(id: existingEvent.id)
+                }
+
+            default:
+                break
+            }
+        }
+
+        // 새 이벤트들 추가
+        if !newEvents.isEmpty {
+            viewModel.addEvents(newEvents)
+        }
+
+        // 변경사항 초기화
+        pendingChanges = []
+    }
+
+    private func colorFromString(_ colorName: String?) -> Color {
+        switch colorName?.lowercased() {
+        case "blue": return Color("Primary500")
+        case "green": return .green
+        case "orange": return .orange
+        case "purple": return .purple
+        case "red": return .red
+        case "yellow": return .yellow
+        default: return Color("Primary200")
+        }
     }
 
     // MARK: - Chatbot FAB

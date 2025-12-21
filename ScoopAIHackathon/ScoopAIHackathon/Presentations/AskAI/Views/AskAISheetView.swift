@@ -12,15 +12,11 @@ struct AskAISheetView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var inputText: String = ""
     @State private var isLoading: Bool = false
-    @State private var resultMessage: String?
-    @State private var showSuccess: Bool = false
-    @State private var lastResponse: ScheduleModifyResponse?
+    @State private var errorMessage: String?
     @FocusState private var isInputFocused: Bool
 
     private let agentService = SpoonAgentService.shared
     var existingEvents: [CalendarEvent] = []
-
-    var onScheduleChanged: ((ScheduleModifyResponse) -> Void)?
     var onConfirmSchedule: (([ScheduleChangeItem]) -> Void)?
 
     var body: some View {
@@ -29,20 +25,15 @@ struct AskAISheetView: View {
                 // Grabber & Header
                 headerSection
 
-                // Content Area - 성공 시 다른 화면 표시
-                if showSuccess, let response = lastResponse {
-                    successContentSection(response: response)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    contentSection
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                // Content
+                contentSection
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 Spacer()
 
-                // Error Message (에러일 때만 표시)
-                if !showSuccess, let message = resultMessage {
-                    resultBanner(message: message)
+                // Error Message
+                if let message = errorMessage {
+                    errorBanner(message: message)
                 }
 
                 // Input Area
@@ -80,11 +71,11 @@ struct AskAISheetView: View {
         }
     }
 
-    // MARK: - Result Banner
-    private func resultBanner(message: String) -> some View {
+    // MARK: - Error Banner
+    private func errorBanner(message: String) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: showSuccess ? "checkmark.circle.fill" : "info.circle.fill")
-                .foregroundStyle(showSuccess ? Color.green : Color("Primary500"))
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundStyle(.red)
 
             Text(message)
                 .font(.pretendard(type: .medium, size: 14))
@@ -92,13 +83,18 @@ struct AskAISheetView: View {
                 .lineLimit(2)
 
             Spacer()
+
+            Button(action: { errorMessage = nil }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color("Grayscale300"))
+            }
         }
         .padding(12)
-        .background(showSuccess ? Color.green.opacity(0.1) : Color("Primary50"))
+        .background(Color.red.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
-        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
     // MARK: - Header Section
@@ -138,54 +134,23 @@ struct AskAISheetView: View {
                 .padding(.top, 110)
 
             // Title
-            Text("무엇을 도와드릴까요?")
+            Text("일정을 변경해 드릴게요")
                 .font(.pretendard(type: .semiBold, size: 20))
                 .foregroundStyle(Color("GrayscaleBlack"))
                 .tracking(-0.43)
 
-            // Suggestion Texts (버튼 아님, 그냥 텍스트)
-            VStack(alignment: .leading, spacing: 12) {
-                SuggestionText(icon: "calendar", title: "일정 변경하기")
-                SuggestionText(icon: "person.fill", title: "행동 추천하기")
+            // 예시 텍스트
+            VStack(alignment: .leading, spacing: 8) {
+                Text("예: \"25일에 회의 추가해줘\"")
+                    .font(.pretendard(type: .medium, size: 14))
+                    .foregroundStyle(Color("Grayscale300"))
+                Text("예: \"내일 미팅 취소해줘\"")
+                    .font(.pretendard(type: .medium, size: 14))
+                    .foregroundStyle(Color("Grayscale300"))
             }
         }
         .padding(.horizontal, 16)
         .padding(.top, 24)
-    }
-
-    // MARK: - Success Content Section
-    private func successContentSection(response: ScheduleModifyResponse) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // AI Icon
-            Image("ChatBotColorIcon")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 68, height: 68)
-                .padding(.top, 60)
-
-            // Success Message
-            Text("변경된 일정을 반영해 전체 일정이 변경되었어요!")
-                .font(.pretendard(type: .semiBold, size: 20))
-                .foregroundStyle(Color("GrayscaleBlack"))
-                .tracking(-0.43)
-
-            // "일정 확인하러 가기" 버튼
-            Button(action: {
-                if let changes = response.changes {
-                    onConfirmSchedule?(changes)
-                }
-            }) {
-                Text("일정 확인하러 가기")
-                    .font(.pretendard(type: .medium, size: 15))
-                    .foregroundStyle(.white)
-                    .tracking(-0.43)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(Color("Primary300"))
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
-            }
-        }
-        .padding(.horizontal, 16)
     }
 
     // MARK: - Input Section (iOS 26 Liquid Glass)
@@ -232,7 +197,7 @@ struct AskAISheetView: View {
 
     private func requestScheduleModify(message: String) async {
         isLoading = true
-        resultMessage = nil
+        errorMessage = nil
 
         let result = await agentService.modifySchedule(message: message)
 
@@ -241,48 +206,17 @@ struct AskAISheetView: View {
 
             switch result {
             case .success(let response):
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    showSuccess = true
-                    lastResponse = response
-                    resultMessage = nil
+                // 일정 변경 → 바로 확인 화면으로 이동
+                if let changes = response.changes, !changes.isEmpty {
+                    onConfirmSchedule?(changes)
+                } else {
+                    errorMessage = response.message ?? "일정 변경 정보를 찾을 수 없습니다."
                 }
-                onScheduleChanged?(response)
 
             case .failure(let error):
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    showSuccess = false
-                    lastResponse = nil
-                    resultMessage = "오류: \(error.localizedDescription)"
-                }
+                errorMessage = "오류: \(error.localizedDescription)"
             }
         }
-    }
-
-    // MARK: - Reset State
-    private func resetState() {
-        withAnimation(.easeInOut(duration: 0.3)) {
-            showSuccess = false
-            lastResponse = nil
-            resultMessage = nil
-        }
-    }
-}
-
-// MARK: - Suggestion Text Component (버튼 아님)
-struct SuggestionText: View {
-    let icon: String
-    let title: String
-
-    var body: some View {
-        HStack(spacing: 3) {
-            Image(systemName: icon)
-                .font(.system(size: 15, weight: .medium))
-
-            Text(title)
-                .font(.pretendard(type: .medium, size: 15))
-                .tracking(-0.43)
-        }
-        .foregroundStyle(Color("Grayscale100"))
     }
 }
 

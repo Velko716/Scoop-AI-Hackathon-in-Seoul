@@ -252,6 +252,33 @@ final class DashboardViewModel {
 
     // MARK: - Calendar Actions
 
+    func addEvent(_ event: CalendarEvent) {
+        withAnimation(.spring(duration: 0.3)) {
+            events.append(event)
+        }
+        // 새 이벤트 선택
+        selectedEventID = event.id
+    }
+
+    func addEvents(_ newEvents: [CalendarEvent]) {
+        withAnimation(.spring(duration: 0.3)) {
+            events.append(contentsOf: newEvents)
+        }
+        // 첫 번째 새 이벤트 선택
+        if let firstNew = newEvents.first {
+            selectedEventID = firstNew.id
+            // 해당 월로 이동
+            currentMonth = firstNew.startDate
+        }
+    }
+
+    func removeEvent(id: UUID) {
+        withAnimation(.spring(duration: 0.3)) {
+            events.removeAll { $0.id == id }
+            allTasks.removeAll { $0.eventId == id }
+        }
+    }
+
     func moveToNextMonth() {
         guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth) else { return }
         currentMonth = nextMonth
