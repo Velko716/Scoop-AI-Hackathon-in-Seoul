@@ -44,44 +44,27 @@ class EventPlannerAgent:
 
 ## 역할
 - 행사 정보를 분석하여 성공적인 행사를 위한 체계적인 준비 일정을 수립합니다.
+- 오늘({today})부터 행사 시작일까지의 준비 일정을 계획합니다.
 - 행사 기간(시작일~마감일) 동안의 행사 진행 일정도 포함합니다.
 
 ## 일정 기획 원칙
-1. 행사 시작일 기준으로 역산하여 준비 일정을 수립합니다.
+1. 오늘({today})부터 행사 시작일까지 남은 기간에 맞춰 준비 일정을 수립합니다.
 2. 행사는 시작일부터 마감일까지의 기간 동안 진행됩니다 (마감일만 D-Day가 아님).
-3. 준비 기간이 짧으면 준비 일정을 압축하고, 길면 여유있게 배치합니다.
+3. 남은 기간이 짧으면 준비 일정을 압축하고, 길면 여유있게 배치합니다.
 4. 관련 업무는 병렬로 진행할 수 있도록 그룹화합니다.
 
-## 준비 일정 배치 방법
-- 행사 시작일을 D-Day(0일)로 설정합니다.
-- 행사 시작일 기준 약 30-60일 전부터 준비 일정을 배치합니다.
-- 예: 행사가 2025-02-15이면, 준비 일정은 2025-01-01 ~ 2025-02-14 사이에 배치
-
-## 주요 준비 단계 (행사 시작일 기준 역산)
-- D-60~D-45: 기획서 확정, 예산 확보
-- D-45~D-30: 장소 섭외 및 계약, 협력업체 선정
-- D-30~D-14: 홍보물 제작, 참가자 모집
-- D-14~D-7: 비품 준비, 리허설 계획
-- D-7~D-3: 최종 점검, 참가자 안내
-- D-2~D-1: 현장 세팅, 리허설
-- D-Day: 행사 진행 (시작일~마감일)
+## 주요 준비 단계 (남은 기간에 맞춰 조정)
+- 기획서 확정, 예산 확보
+- 장소 섭외 및 계약, 협력업체 선정
+- 홍보물 제작, 참가자 모집
+- 비품 준비, 리허설 계획
+- 최종 점검, 참가자 안내
+- 현장 세팅, 리허설
+- 행사 진행 (시작일~마감일)
 
 ## 중요: 응답 형식
 반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트는 포함하지 마세요.
-
-```json
-{{
-  "success": true,
-  "event_name": "행사명",
-  "schedules": [
-    {{
-      "title": "준비 작업 제목",
-      "startDate": "YYYY-MM-DD",
-      "endDate": "YYYY-MM-DD",
-      "color": "색상"
-    }}
-  ]
-}}
+@@ -82,23 +81,19 @@ def _build_system_prompt(self) -> str:
 ```
 
 색상은 다음 중 선택: red, orange, yellow, green, blue, purple, pink
@@ -93,10 +76,10 @@ class EventPlannerAgent:
 - 운영/리허설: yellow
 
 ## 주의사항
-1. 오늘 날짜({today})와 관계없이, 행사 시작일 기준으로 역산하여 준비 일정을 생성하세요.
+1. 오늘 날짜는 {today}입니다. 모든 준비 일정은 오늘 이후여야 합니다.
 2. 행사 기간이 여러 날이면 "[행사] 행사명"으로 시작일~마감일 전체를 하나의 일정으로 표시하세요.
 3. 행사 기간이 하루면 "[D-Day] 행사명"으로 표시하세요.
-4. 준비 일정은 행사 시작일 이전 날짜로 배치하세요.
+4. 준비 일정은 오늘부터 행사 시작일 전날까지 배치하세요.
 5. 5-10개의 준비 일정을 생성하세요."""
 
     async def run(self, message: str) -> str:
@@ -114,7 +97,9 @@ class EventPlannerAgent:
             json_result = self._extract_json(response_text)
 
             if json_result:
-                return json_result
+                # 오늘 이전 날짜 필터링
+                filtered_result = self._filter_past_schedules(json_result)
+                return filtered_result
             else:
                 # JSON을 찾지 못한 경우, 응답 전체 반환
                 return response_text
@@ -124,6 +109,27 @@ class EventPlannerAgent:
                 "success": False,
                 "error": str(e)
             }, ensure_ascii=False)
+
+    def _filter_past_schedules(self, json_str: str) -> str:
+        """오늘 이전 날짜의 스케줄을 필터링"""
+        try:
+            data = json.loads(json_str)
+            today = datetime.now().strftime("%Y-%m-%d")
+
+            if "schedules" in data:
+                # 오늘 이후 스케줄만 유지
+                filtered_schedules = []
+                for schedule in data["schedules"]:
+                    start_date = schedule.get("startDate", "")
+                    # startDate가 오늘 이후인 경우만 포함
+                    if start_date >= today:
+                        filtered_schedules.append(schedule)
+
+                data["schedules"] = filtered_schedules
+
+            return json.dumps(data, ensure_ascii=False)
+        except json.JSONDecodeError:
+            return json_str
 
     def _extract_json(self, text: str) -> Optional[str]:
         """텍스트에서 JSON 블록 추출"""
