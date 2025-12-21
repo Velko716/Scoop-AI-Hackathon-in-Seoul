@@ -244,6 +244,74 @@ class SpoonAgentService {
         }
     }
 
+    /// 일정 변경 요청 (/modify-schedule 엔드포인트 호출)
+    func modifySchedule(message: String, currentSchedules: [CurrentScheduleItem]? = nil) async -> Result<ScheduleModifyResponse, SpoonAgentError> {
+        guard let url = URL(string: "\(baseURL)/modify-schedule") else {
+            return .failure(.invalidURL)
+        }
+
+        await MainActor.run {
+            self.isLoading = true
+            self.errorMessage = nil
+        }
+
+        defer {
+            Task { @MainActor in
+                self.isLoading = false
+            }
+        }
+
+        // 요청 생성
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.timeoutInterval = 60
+
+        let requestBody = ScheduleModifyRequest(
+            message: message,
+            currentSchedules: currentSchedules
+        )
+
+        do {
+            urlRequest.httpBody = try JSONEncoder().encode(requestBody)
+        } catch {
+            return .failure(.decodingError(error))
+        }
+
+        // 요청 전송
+        do {
+            let (data, response) = try await URLSession.shared.data(for: urlRequest)
+
+            if let httpResponse = response as? HTTPURLResponse,
+               httpResponse.statusCode != 200 {
+                return .failure(.serverError("HTTP \(httpResponse.statusCode)"))
+            }
+
+            let modifyResponse = try JSONDecoder().decode(ScheduleModifyResponse.self, from: data)
+
+            if !modifyResponse.success {
+                let errorMsg = modifyResponse.error ?? "알 수 없는 오류"
+                await MainActor.run {
+                    self.errorMessage = errorMsg
+                }
+                return .failure(.serverError(errorMsg))
+            }
+
+            return .success(modifyResponse)
+
+        } catch let error as DecodingError {
+            await MainActor.run {
+                self.errorMessage = error.localizedDescription
+            }
+            return .failure(.decodingError(error))
+        } catch {
+            await MainActor.run {
+                self.errorMessage = error.localizedDescription
+            }
+            return .failure(.networkError(error))
+        }
+    }
+
     // MARK: - Private Methods
 
     /// EventPlanRequest를 EventInfoItem 배열로 변환

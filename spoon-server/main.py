@@ -26,17 +26,19 @@ load_dotenv()
 from my_first_agent import MyFirstAgent
 from multi_model_agent import MultiModelAgent, LLMProvider, FallbackAgent
 from event_planner_agent import EventPlannerAgent
+from schedule_modifier_agent import ScheduleModifierAgent
 
 # 전역 에이전트 인스턴스
 agents: dict = {}
 fallback_agent: Optional[FallbackAgent] = None
 event_planner: Optional[EventPlannerAgent] = None
+schedule_modifier: Optional[ScheduleModifierAgent] = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """서버 시작/종료 시 에이전트 초기화/정리"""
-    global agents, fallback_agent, event_planner
+    global agents, fallback_agent, event_planner, schedule_modifier
 
     print("🚀 SpoonOS 에이전트 초기화 중...")
 
@@ -57,6 +59,13 @@ async def lifespan(app: FastAPI):
         print("  ✅ 행사 기획 전문가 에이전트 준비 완료")
     except Exception as e:
         print(f"  ⚠️ 행사 기획 에이전트 초기화 실패: {e}")
+
+    # 일정 변경 에이전트
+    try:
+        schedule_modifier = ScheduleModifierAgent()
+        print("  ✅ 일정 변경 에이전트 준비 완료")
+    except Exception as e:
+        print(f"  ⚠️ 일정 변경 에이전트 초기화 실패: {e}")
 
     # OpenRouter 상태 확인
     openrouter_key = os.getenv("OPENAI_API_KEY")
@@ -174,6 +183,53 @@ class EventPlanResponse(BaseModel):
     schedules: Optional[list[ScheduleItem]] = None
     todos: Optional[list[TodoItem]] = None  # 체크리스트 추가
     raw_response: Optional[str] = None
+    error: Optional[str] = None
+
+
+class CurrentScheduleItem(BaseModel):
+    """현재 일정 항목 (일정 변경 요청 시)"""
+    id: Optional[str] = None
+    title: str
+    date: str
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+
+
+class ScheduleModifyRequest(BaseModel):
+    """일정 변경 요청 모델"""
+    message: str
+    current_schedules: Optional[list[CurrentScheduleItem]] = None
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "message": "내일 오후 3시에 팀 미팅 잡아줘",
+                "current_schedules": [
+                    {"id": "1", "title": "기존 회의", "date": "2024-12-22"}
+                ]
+            }
+        }
+    }
+
+
+class ScheduleChangeItem(BaseModel):
+    """일정 변경 항목"""
+    type: str  # add, modify, delete
+    schedule_id: Optional[str] = None
+    title: Optional[str] = None
+    original_date: Optional[str] = None
+    new_date: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    color: Optional[str] = None
+
+
+class ScheduleModifyResponse(BaseModel):
+    """일정 변경 응답 모델"""
+    success: bool
+    action: Optional[str] = None
+    message: Optional[str] = None
+    changes: Optional[list[ScheduleChangeItem]] = None
     error: Optional[str] = None
 
 
@@ -529,6 +585,83 @@ async def plan_event(request: EventPlanRequest):
 
     except Exception as e:
         return EventPlanResponse(
+            success=False,
+            error=str(e)
+        )
+
+
+@app.post("/modify-schedule", response_model=ScheduleModifyResponse)
+async def modify_schedule(request: ScheduleModifyRequest):
+    """
+    채팅 기반 일정 변경
+
+    사용자의 자연어 요청을 분석하여 일정 추가/수정/삭제를 처리합니다.
+    - message: 사용자 요청 (예: "내일 3시에 회의 잡아줘")
+    - current_schedules: 현재 일정 목록 (선택, 일정 수정/삭제 시 참조)
+    """
+    import json
+
+    if schedule_modifier is None:
+        raise HTTPException(status_code=503, detail="Schedule modifier agent not initialized")
+
+    try:
+        # 현재 일정을 dict 리스트로 변환
+        current_schedules_dict = None
+        if request.current_schedules:
+            current_schedules_dict = [
+                {
+                    "id": s.id,
+                    "title": s.title,
+                    "date": s.date,
+                    "start_time": s.start_time,
+                    "end_time": s.end_time
+                }
+                for s in request.current_schedules
+            ]
+
+        # 에이전트 호출
+        response = await schedule_modifier.run(
+            message=request.message,
+            current_schedules=current_schedules_dict
+        )
+
+        # JSON 파싱 시도
+        try:
+            parsed = json.loads(response)
+
+            # 변경사항 파싱
+            changes = None
+            if parsed.get("changes"):
+                changes = [
+                    ScheduleChangeItem(
+                        type=c.get("type", "add"),
+                        schedule_id=c.get("schedule_id"),
+                        title=c.get("title"),
+                        original_date=c.get("original_date"),
+                        new_date=c.get("new_date"),
+                        start_time=c.get("start_time"),
+                        end_time=c.get("end_time"),
+                        color=c.get("color", "blue")
+                    )
+                    for c in parsed["changes"]
+                ]
+
+            return ScheduleModifyResponse(
+                success=parsed.get("success", True),
+                action=parsed.get("action"),
+                message=parsed.get("message", "일정이 변경되었습니다."),
+                changes=changes
+            )
+
+        except json.JSONDecodeError:
+            # JSON 파싱 실패 시 원본 응답 반환
+            return ScheduleModifyResponse(
+                success=True,
+                message=response
+            )
+
+    except Exception as e:
+        return ScheduleModifyResponse(
             success=False,
             error=str(e)
         )

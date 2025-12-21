@@ -9,12 +9,12 @@ import SwiftUI
 
 // MARK: - Design Colors
 private enum ChecklistColors {
-    static let primaryStrong = Color(hex: "344BA5")      // 이벤트 제목
-    static let labelNormal = Color(hex: "989EAD")        // 체크박스 아이콘
-    static let labelAssistive = Color(hex: "1D1E23")     // 할 일 텍스트
-    static let primaryAssistive = Color(hex: "7787C6")   // 상세보기, 완료 체크
+    static let primaryStrong = Color("Primary600")       // 이벤트 제목
+    static let labelNormal = Color("Grayscale300")       // 체크박스 아이콘
+    static let labelAssistive = Color("GrayscaleBlack")  // 할 일 텍스트
+    static let primaryAssistive = Color("Primary200")    // 상세보기, 완료 체크
     static let backgroundStrong = Color.white            // 배경
-    static let shadow = Color(hex: "7787C6").opacity(0.2)
+    static let shadow = Color("Primary200").opacity(0.2)
 }
 
 struct IntegratedChecklistView: View {
