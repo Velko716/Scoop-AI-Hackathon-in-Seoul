@@ -148,3 +148,7 @@ __pycache__/
 # CodeTracker
 .codetracker/credentials.json
 .codetracker/cache/
+
+# Xcode 표준 보강 (Phase E, 2026-04-29)
+*.xcuserstate
+.swiftpm/
